@@ -1,0 +1,9 @@
+#include "dkli.dkh"
+#!
+module
+{
+    #$ div
+    {
+        h1{$"Store Front"}
+    }
+}

@@ -1,0 +1,6 @@
+#include "dkli.dkh"
+#!
+module
+{
+	// Agregue valores de configuración para todas las aplicaciones	
+}
