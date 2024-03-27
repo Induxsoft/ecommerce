@@ -10,11 +10,6 @@ module "Controller configs"
 	#include "dbr.security.dkl"
 	#include "crudl/crudl.dk"
 
-	if @@(@http_context,"$session/user/ids") == "" {
-		@http_context<"response/headers/location"> : "/"
-		return
-	}
-
 	@base_path="ecommerce"
 	@path_root="" // Establezca una ruta de ser necesario
 
@@ -42,10 +37,8 @@ module "Controller configs"
 	{
 		"access":[{"workspace":"'+@ws+'"}]
 	}'
-
-	// #include "crudl/controller.dkl"
-
-	search_plantilla::
+	
+	search_template::
 	{
 		// Las ubicaciones de búsqueda de plantillas serán en orden:
 		// * /ecommerce/templates/ Plantillas predefinidas del paquete
@@ -54,9 +47,21 @@ module "Controller configs"
 
 		// La búsqueda del archivo de plantilla (si no tiene extensión indicada) será: .dkl o .dk (en ese orden)
 		// Adicionalmente, de manera predeterminada, al no existir una plantilla, se cargará /ecommerce/templates/_storefront.dk
+		ref GETD = @@(@http_context,"&request/get/")
+		ref HEAD = @@(@http_context,"&request/headers/")
+		template = "ecommerce/templates/_storefront.dk"
 
-		return "ecommerce/templates/_storefront.dk"
+		// Directorios de búsqueda
+		templates_package = "ecommerce/templates/"
+		templates_website = replace("web/{_domain}/_protected/templates/","{_domain}",@@(HEAD,"HTTP_HOST"))
+		templates_wcommon = "_templates/pages/"
+
+		// Búsqueda
+		file = @@(get,"_page_template")
+
+		return template
 	}
 
-	#include search_plantilla()
+	include search_template()
+	// #include "crudl/controller.dkl"
 }
