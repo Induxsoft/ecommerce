@@ -37,9 +37,25 @@ module "Controller configs"
 	{
 		"access":[{"workspace":"'+@ws+'"}]
 	}'
+
+	get_site_config::
+    {
+        f = path.concat("_config",@@(@http_context,"$request/headers/HTTP_HOST")+".json")
+        if file.exists(f) 
+        {
+            return from.json(file.rtext(f))
+            exception{}
+        }
+        return record.create()
+    }
+
+    ref confg = get_site_config()
+	def_tmplt = @@(confg,"$default_page_template")
 	
-	search_template::
+	search_template::def_tmplt
 	{
+		if def_tmplt == "" { def_tmplt = "_storefront.dk" }
+
 		// Las ubicaciones de búsqueda de plantillas serán en orden:
 		// * /ecommerce/templates/ Plantillas predefinidas del paquete
 		// * web/dominio/_protected/templates/ Plantillas del sitio Web
@@ -47,9 +63,10 @@ module "Controller configs"
 
 		// La búsqueda del archivo de plantilla (si no tiene extensión indicada) será: .dkl o .dk (en ese orden)
 		// Adicionalmente, de manera predeterminada, al no existir una plantilla, se cargará /ecommerce/templates/_storefront.dk
+		
 		ref GETD = @@(@http_context,"&request/get/")
 		ref HEAD = @@(@http_context,"&request/headers/")
-		template = "ecommerce/templates/_storefront.dk"
+		template = path.concat("ecommerce/templates/",def_tmplt)
 
 		// Directorios de búsqueda
 		templates_package = "ecommerce/templates/"
@@ -57,11 +74,28 @@ module "Controller configs"
 		templates_wcommon = "_templates/pages/"
 
 		// Búsqueda
-		file = @@(get,"_page_template")
+		file = @@(GETD,"_page_template")
+		fext = file.extension(file)
+
+		if fext == ""
+		{
+			if file.exists(path.concat(templates_package,file+".dkl")){ template = path.concat(templates_package,file+".dkl") }
+			else if file.exists(path.concat(templates_package,file+".dk")){ template = path.concat(templates_package,file+".dk") }
+			else if file.exists(path.concat(templates_website,file+".dkl")){ template = path.concat(templates_website,file+".dkl") }
+			else if file.exists(path.concat(templates_website,file+".dk")){ template = path.concat(templates_website,file+".dk") }
+			else if file.exists(path.concat(templates_wcommon,file+".dkl")){ template = path.concat(templates_wcommon,file+".dkl") }
+			else if file.exists(path.concat(templates_wcommon,file+".dk")){ template = path.concat(templates_wcommon,file+".dk") }
+		}
+		else 
+		{
+			if file.exists(path.concat(templates_package,file)){ template = path.concat(templates_package,file) }
+			else if file.exists(path.concat(templates_website,file)){ template = path.concat(templates_website,file) }
+			else if file.exists(path.concat(templates_wcommon,file)){ template = path.concat(templates_wcommon,file) }
+		}
 
 		return template
 	}
 
-	include search_template()
+	include search_template(def_tmplt)
 	// #include "crudl/controller.dkl"
 }
