@@ -1,0 +1,49 @@
+#include "dkli.dkh"
+#!
+module "login"
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+
+    error_message = ""
+    ref get = @@(@http_context, "&request/get")
+
+    if toupper(@@(@http_context, "request/headers/REQUEST_METHOD")) == "POST"
+    {
+        ref p = @@(@http_context, "&request/post")
+        ref h = @@(@http_context, "&request/headers")
+        
+        usr = @@(p,"$usr")
+		pwd = @@(p,"$pwd")
+		url = @@(p,"$exit_url_encode")
+
+		do dbr.setHashUnicode(@true)
+		ref db = dbr.login(get_qn(), usr, pwd)
+		urlext = parse_url_session(db, url)
+		@http_context<"response/headers/Location">: urlext
+		return
+
+		exception
+		{
+            do errordet(@false)
+            if url != "" { get<"exit_url_encode">: url }
+			error_message = last_error()
+		}
+    }
+
+    #$ form(action="." method="POST")
+    {
+        input(type="hidden" name="exit_url_encode" value="#<@@(get,'exit_url_encode')>")
+
+        h1{$"Iniciar sesión"}
+        label{$"Usuario"}
+        input(name="usr")
+        label{$"Contraseña"}
+        input(name="pwd" type="password")
+        button{$"Aceptar"}
+
+        a(href="#<@url_signup>"){ small{$"¿No tienes una cuenta? regístrate"} }
+
+        div(class="alert alert-danger #<ifstr(error_message == '', 'd-none', '')>"){ $"#<error_message>" }
+    }
+}

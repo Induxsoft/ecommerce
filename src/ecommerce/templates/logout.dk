@@ -1,0 +1,9 @@
+#include "dkli.dkh"
+#!
+module "logout"
+{
+	ids = @@(@http_context,"$session/user/ids")
+	ref db = dbr.reconnect(@@(@http_context,"$session/idp/qname"), ids)
+	do dbr.logout(db)
+	@http_context<"response/headers/location"> : current_url(@true, @false)
+}

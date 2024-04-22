@@ -9,6 +9,8 @@ module "Controller configs"
 	#include "dbr.folios.dkl"
 	#include "dbr.security.dkl"
 	#include "crudl/crudl.dk"
+	#include "_lib/config.dk"
+	#include "_lib/lib.dk"
 
 	@base_path="ecommerce"
 	@path_root="" // Establezca una ruta de ser necesario

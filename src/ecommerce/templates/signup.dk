@@ -1,0 +1,93 @@
+#include "dkli.dkh"
+#!
+module "signup"
+{
+    error_message = ""
+    ref get = @@(@http_context, "&request/get")
+    ref pos = ifnull(@@(@http_context, "&request/post"), record.create())
+
+    if toupper(@@(@http_context, "request/headers/REQUEST_METHOD")) == "POST"
+    {
+        ref db = get_database()
+        urlext = @@(pos,"$exit_url_encode")
+
+        nombre = @@(pos,"$nombre")
+        _email = @@(pos,"$email")
+        mobile = @@(pos,"$mobile")
+
+        if nombre == "" { do rise_error(0, "Se esperaba el parámetro 'nombre'") }
+        if _email == "" { do rise_error(0, "Se esperaba el parámetro 'email'") }
+        if mobile == "" { do rise_error(0, "Se esperaba el parámetro 'mobile'") }
+
+        if not(isnull(dbr.rec(db, "SELECT sys_pk FROM tuserpro WHERE email = @email LIMIT 1;", pos))) {
+            do rise_error(0, "El correo proporcionado ya está registrado")
+        }
+        if not(isnull(dbr.rec(db, "SELECT sys_pk FROM tuserpro WHERE mobile = @mobile LIMIT 1;", pos))) {
+            do rise_error(0, "El correo proporcionado ya está registrado")
+        }
+
+        new userpro
+        {
+            @"sys_guid": uuid()
+            @"sys_recver": 0
+            @"sys_timestamp*": dbr.sql("NOW()")
+            @"email": _email
+            @"mobile": mobile
+        }
+
+        new user
+        {
+            @"sys_guid": uuid()
+            @"sys_recver": 0
+            @"sys_timestamp*": dbr.sql("NOW()")
+            @"username": nombre
+            @"userid": toupper(uuid())
+        }
+
+        if field.exist(pos, "pwd")
+        {
+            user<"pwd">: toupper(md5e(@@(pos,"pwd"),"Unicode"))
+            user<"pwdmd5">: toupper(md5(@@(pos,"pwd")))
+        }
+        
+        do dbr.begin(db)
+        do dbr.insert(db, "tuser", user)
+        userpro<"ref_user">: dbr.num(db, "SELECT sys_pk FROM tuser WHERE userid=@userid", user)
+        do dbr.insert(db, "tuserpro", userpro)
+        
+        ref ndb = dbr.login(get_qn(), @@(user,"userid"), @@(user,"pwd"))
+        urlext = parse_url_session(ndb, urlext)
+        do dbr.commit(db)
+
+        @http_context<"response/headers/Location">: urlexit
+
+        exception
+        {
+            error_message = last_error()
+            if urlext != "" { get<"exit_url_encode">: url }
+            if isset("db") { if dbr.in_transaction(db){ do dbr.rollback(db) } }
+        }
+    }
+
+    #$ form(action="." method="POST")
+    {
+        input(type="hidden" name="exit_url_encode" value="#<@@(get,'exit_url_encode')>")
+
+        h1{$"Registrarse"}
+        label{$"Nombre"}
+        input(name="nombre" required="true" value="#<@@(pos,'nombre')>")
+        label{$"Correo"}
+        input(name="email" required="true" type="email" value="#<@@(pos,'email')>")
+        label{$"Teléfono"}
+        input(name="mobile" required="true" value="#<@@(pos,'mobile')>")
+        label{$"Contraseña"}
+        input(name="pwd" type="password" value="#<@@(pos,'pwd')>")
+        label{$"Confirmar contraseña"}
+        input(id="ipt_confirm_pdw" type="password")
+        button{$"Registrarme"}
+
+        a(href="#<@url_login>"){ small{$"¿Ya tienes una cuenta? Incia sesión"} }
+
+        div(class="alert alert-danger #<ifstr(error_message == '', 'd-none', '')>"){ $"#<error_message>" }
+    }
+}

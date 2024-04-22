@@ -1,0 +1,45 @@
+#include "dkli.dkh"
+#!
+module "lib"
+{
+    #include "functions.dkh"
+
+    current_url::base_only, include_params
+    {
+        http = ifstr(parse.bool(@@(@http_context,"request/headers/HTTPS")),"https","http")
+        host = @@(@http_context, "request/headers/HTTP_HOST")
+        port = @@(@http_context, "request/headers/SERVER_PORT")
+        ruri = @@(@http_context, "request/headers/REQUEST_URI")
+        prms = @@(@http_context, "request/headers/QUERY_STRING")
+
+        base = http+"://"+host+":"+port
+        _url = path.concat(base, ruri)
+        
+        if base_only { return base }
+        if include_params && trim(prms) != "" { _url = path.concat(_url,"?"+prms)  }
+
+        return _url
+    }
+    get_qn::
+    {
+        return @@(@http_context, "$session/idp/qname")
+    }
+    get_database::
+    {
+        ref db = @@(@http_context, "&session/idp/database")
+        if isnull(db) { ref db = dbr.open(get_qn()) }
+        return db
+    }
+    parse_url_session::&db, url
+    {
+        if url == "" { url = url_encode(current_url(@true, @false)) }
+
+        ids = dbr.getSID(db)
+        url = url_dcode(url)
+		url = replace(url,"@token",ids)
+		url = replace(url,"@ids",ids)
+
+        return url
+        exception { do rise_error(0, "Error al parsear la url") }
+    }
+}

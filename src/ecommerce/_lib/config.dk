@@ -2,5 +2,8 @@
 #!
 module
 {
-	// Agregue valores de configuración para todas las aplicaciones	
+	@url_login = "/-/login/"
+	@url_logout = "/-/logout/"
+	@url_signup = "/-/signup/"
+	@url_profile = "/-/me/"
 }

@@ -1,0 +1,13 @@
+#include "dkli.dkh"
+#!
+module "Me (profile info)"
+{
+    new prm
+    {
+        @"uid": @@(@http_context, "$session/user/uid")
+    }
+
+    ref db = @@(@http_context, "&session/idp/database")
+
+    ref user = dbr.rec(db, "SELECT sys_pk, username FROM tuser WHERE userid = @uid;", prm);
+}
