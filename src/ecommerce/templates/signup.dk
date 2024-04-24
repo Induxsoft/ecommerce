@@ -2,7 +2,7 @@
 #!
 module "signup"
 {
-    error_message = ""
+    message = ""
     ref get = @@(@http_context, "&request/get")
     ref pos = ifnull(@@(@http_context, "&request/post"), record.create())
 
@@ -23,13 +23,14 @@ module "signup"
             do rise_error(0, "El correo proporcionado ya está registrado")
         }
         if not(isnull(dbr.rec(db, "SELECT sys_pk FROM tuserpro WHERE mobile = @mobile LIMIT 1;", pos))) {
-            do rise_error(0, "El correo proporcionado ya está registrado")
+            do rise_error(0, "El teléfono proporcionado ya está registrado")
         }
 
         new userpro
         {
             @"sys_guid": uuid()
             @"sys_recver": 0
+            @"sys_dtcreated*": dbr.sql("NOW()")
             @"sys_timestamp*": dbr.sql("NOW()")
             @"email": _email
             @"mobile": mobile
@@ -39,38 +40,39 @@ module "signup"
         {
             @"sys_guid": uuid()
             @"sys_recver": 0
+            @"sys_dtcreated*": dbr.sql("NOW()")
             @"sys_timestamp*": dbr.sql("NOW()")
             @"username": nombre
             @"userid": toupper(uuid())
-        }
-
-        if field.exist(pos, "pwd")
-        {
-            user<"pwd">: toupper(md5e(@@(pos,"pwd"),"Unicode"))
-            user<"pwdmd5">: toupper(md5(@@(pos,"pwd")))
+            @"pwd": toupper(md5e(@@(pos,"pwd"),"Unicode"))
+            @"pwdmd5": toupper(md5(@@(pos,"pwd")))
         }
         
         do dbr.begin(db)
         do dbr.insert(db, "tuser", user)
+        
         userpro<"ref_user">: dbr.num(db, "SELECT sys_pk FROM tuser WHERE userid=@userid", user)
         do dbr.insert(db, "tuserpro", userpro)
-        
-        ref ndb = dbr.login(get_qn(), @@(user,"userid"), @@(user,"pwd"))
-        urlext = parse_url_session(ndb, urlext)
         do dbr.commit(db)
 
-        @http_context<"response/headers/Location">: urlexit
+        do dbr.setHashUnicode(@true)
+        ref ndb = dbr.login(get_qn(), @@(user,"userid"), @@(pos,"$pwd"))
+        
+        urlext = parse_url_session(ndb, urlext)
+
+        @http_context<"response/headers/Location">: urlext
 
         exception
         {
-            error_message = last_error()
-            if urlext != "" { get<"exit_url_encode">: url }
+            message = last_error()
+            if urlext != "" { get<"exit_url_encode">: urlext }
             if isset("db") { if dbr.in_transaction(db){ do dbr.rollback(db) } }
         }
     }
 
     #$ form(action="." method="POST")
     {
+        div(class="alert alert-danger #<ifstr(message == '', 'd-none', '')>"){ $"#<message>" }
         input(type="hidden" name="exit_url_encode" value="#<@@(get,'exit_url_encode')>")
 
         h1{$"Registrarse"}
@@ -87,7 +89,5 @@ module "signup"
         button{$"Registrarme"}
 
         a(href="#<@url_login>"){ small{$"¿Ya tienes una cuenta? Incia sesión"} }
-
-        div(class="alert alert-danger #<ifstr(error_message == '', 'd-none', '')>"){ $"#<error_message>" }
     }
 }

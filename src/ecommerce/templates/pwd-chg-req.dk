@@ -1,0 +1,20 @@
+#include "dkli.dkh"
+#!
+module "Request password change"
+{
+    if toupper(@@(@http_context, "request/headers/REQUEST_METHOD")) == "POST"
+    {
+        // enviar correo usando v12.com
+    }
+    else 
+    {
+        #$ div
+        {
+            h1{$"Solicitar cambio de contraseña"}
+            input(name="uid" placeholder="Correo o número de teléfono")
+            button{$"Solicitar"}
+
+            div { a(href="#<@url_login>"){ small{$"¿Ya tienes una cuenta? Inicia sesión"} } }
+        }   
+    }
+}

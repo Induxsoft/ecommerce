@@ -6,4 +6,7 @@ module
 	@url_logout = "/-/logout/"
 	@url_signup = "/-/signup/"
 	@url_profile = "/-/me/"
+	@url_pwd_chg_req = "/-/pwd-chg-req/"
+
+	@SID_TIME_LIFE=1440 // 24 horas expresadas en minutos
 }

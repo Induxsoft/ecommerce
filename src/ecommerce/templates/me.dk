@@ -2,12 +2,102 @@
 #!
 module "Me (profile info)"
 {
-    new prm
+    do _map_function(@lib_dbr,"induxsoft.Connections.Manager","ResetStorage","reset","void","void")
+
+    error_message = ""
+    success_message = ""
+    ref db = get_database()
+
+    new prm { @"uid": @@(@http_context, "$session/user/uid") }
+    sql_user = "
+        SELECT u.sys_pk, u.sys_recver, u.username, up.sys_pk up_pk, up.sys_recver up_recver, up.email, up.mobile
+        FROM tuser u 
+            INNER JOIN tuserpro up ON up.ref_user = u.sys_pk
+        WHERE userid = @uid
+        LIMIT 1;
+    "
+    ref user = dbr.rec(db, sql_user, prm)
+
+    if toupper(@@(@http_context, "request/headers/REQUEST_METHOD")) == "POST"
     {
-        @"uid": @@(@http_context, "$session/user/uid")
+        ref post = ifnull(@@(@http_context, "&request/post"), record.create())
+
+        if trim(@@(post,"$username")) == "" {
+            do rise_error(0, "El nombre no puede estar vacío")
+        }
+        if trim(@@(post,"$email")) == "" {
+            do rise_error(0, "El correo no puede estar vacío")
+        }
+        if trim(@@(post,"$mobile")) == "" {
+            do rise_error(0, "El teléfono no puede estar vacío")
+        }
+
+        if not(isnull(dbr.rec(db, "SELECT sys_pk FROM tuserpro WHERE email = @email AND ref_user <> @sys_pk LIMIT 1;", post))) {
+            do rise_error(0, "El correo proporcionado ya está registrado")
+        }
+        if not(isnull(dbr.rec(db, "SELECT sys_pk FROM tuserpro WHERE mobile = @mobile AND ref_user <> @sys_pk LIMIT 1;", post))) {
+            do rise_error(0, "El teléfono proporcionado ya está registrado")
+        }
+
+        new user
+        {
+            @"sys_pk": @@(post,"#sys_pk")
+            @"sys_recver": @@(post,"#sys_recver")
+            @"sys_timestamp*": now()
+            @"username": @@(post,"$username")
+        }
+        new userpro
+        {
+            @"sys_pk": @@(post,"#up_pk")
+            @"sys_recver": @@(post,"#up_recver")
+            @"sys_timestamp*": now()
+            @"email": @@(post,"$email")
+            @"mobile": @@(post,"$mobile")
+        }
+
+        if trim(@@(post,"$pwd")) != ""
+        {
+            user<"pwd">: toupper(md5e(@@(post,"pwd"),"Unicode"))
+            user<"pwdmd5">: toupper(md5(@@(post,"pwd")))
+        }
+
+        do dbr.save(db, "tuser", user)
+        do dbr.save(db, "tuserpro", userpro)
+        success_message = "Se guardaron los cambios"
+        ref user = dbr.rec(db, sql_user, prm)
     }
 
-    ref db = @@(@http_context, "&session/idp/database")
+    exception { 
+        error_message = last_error() 
+    }
 
-    ref user = dbr.rec(db, "SELECT sys_pk, username FROM tuser WHERE userid = @uid;", prm);
+    #$ form(action="." method="POST")
+    {
+        div(class="alert alert-danger #<ifstr(error_message == '', 'd-none', '')>"){ $"#<error_message>" }
+        div(class="alert alert-success #<ifstr(success_message == '', 'd-none', '')>"){ $"#<success_message>" }
+        input(name="sys_pk" type="hidden" value="#<@@(user,'sys_pk')>")
+        input(name="sys_recver" type="hidden" value="#<@@(user,'sys_recver')>")
+        input(name="up_pk" type="hidden" value="#<@@(user,'up_pk')>")
+        input(name="up_recver" type="hidden" value="#<@@(user,'up_recver')>")
+        
+        h1{$"Mi perfil"}
+        label{$"Nombre"}
+        input(name="username" value="#<@@(user,'username')>")
+        label{$"Correo"}
+        input(name="email" value="#<@@(user,'email')>")
+        label{$"Teléfono"}
+        input(name="mobile" value="#<@@(user,'mobile')>")
+
+        details
+        {
+            summary{$"Cambiar contraseña"}
+            div
+            {
+                label{$"Nueva contraseña"}
+                input(name="pwd")
+            }
+        }
+
+        button(class="mt-4"){$"Guardar"}
+    }
 }

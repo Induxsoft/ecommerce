@@ -5,45 +5,75 @@ module "login"
     #include "functions.dkh"
     #include "serialize.dkh"
 
-    error_message = ""
+    message = ""
     ref get = @@(@http_context, "&request/get")
+    ref pos = ifnull(@@(@http_context, "&request/post"), record.create())
 
     if toupper(@@(@http_context, "request/headers/REQUEST_METHOD")) == "POST"
-    {
-        ref p = @@(@http_context, "&request/post")
-        ref h = @@(@http_context, "&request/headers")
-        
-        usr = @@(p,"$usr")
-		pwd = @@(p,"$pwd")
-		url = @@(p,"$exit_url_encode")
+    {        
+        ref db = get_database()
 
-		do dbr.setHashUnicode(@true)
-		ref db = dbr.login(get_qn(), usr, pwd)
-		urlext = parse_url_session(db, url)
+        // Recuperar sesión
+        sql = "
+            SELECT IFNULL(s.sys_guid,'')
+            FROM sys_session s
+                INNER JOIN tuser u ON s.iuser = u.sys_pk
+                INNER JOIN tuserpro up ON up.ref_user = u.sys_pk
+            WHERE IFNULL(s.sys_deleted, 0) = 0
+                AND (u.userid = @uid OR up.mobile = @uid OR up.email = @uid)
+                AND u.pwd = MD5(@pwd)
+                AND TIMESTAMPDIFF(MINUTE, s.sys_dtcreated, NOW()) < @sid_time_life
+            LIMIT 1;
+        "
+        pos<"sid_time_life">: @SID_TIME_LIFE
+        ids = dbr.str(db, ftext(sql), pos)
+        
+        ref _db = @null
+
+        if ids != ""
+        {
+            ref _db = dbr.reconnect(get_qn(), ids)
+        }
+        else 
+        {
+            // Crear sesión
+            sql = "
+                SELECT u.userid 
+                FROM tuser u 
+                    INNER JOIN tuserpro up ON up.ref_user = u.sys_pk 
+                WHERE (u.userid = @uid OR up.mobile = @uid OR up.email = @uid) 
+                LIMIT 1;
+            "
+            do dbr.setHashUnicode(@true)
+            _userid = dbr.str(db, sql, pos)
+            ref _db = dbr.login(get_qn(), _userid, @@(pos,"$pwd"))
+        }
+
+		urlext = parse_url_session(_db, @@(pos,"$exit_url_encode"))
 		@http_context<"response/headers/Location">: urlext
 		return
 
 		exception
 		{
             do errordet(@false)
-            if url != "" { get<"exit_url_encode">: url }
-			error_message = last_error()
+            if @@(pos,"$exit_url_encode") != "" { get<"exit_url_encode">: @@(pos,"$exit_url_encode") }
+			message = last_error()
 		}
     }
 
     #$ form(action="." method="POST")
     {
+        div(class="alert alert-danger #<ifstr(message == '', 'd-none', '')>"){ $"#<message>" }
         input(type="hidden" name="exit_url_encode" value="#<@@(get,'exit_url_encode')>")
 
         h1{$"Iniciar sesión"}
         label{$"Usuario"}
-        input(name="usr")
+        input(name="uid" value="#<@@(pos,'uid')>")
         label{$"Contraseña"}
         input(name="pwd" type="password")
         button{$"Aceptar"}
 
-        a(href="#<@url_signup>"){ small{$"¿No tienes una cuenta? regístrate"} }
-
-        div(class="alert alert-danger #<ifstr(error_message == '', 'd-none', '')>"){ $"#<error_message>" }
+        div { a(href="#<@url_pwd_chg_req>"){ small{$"Recuperar contraseña"} } }
+        div { a(href="#<@url_signup>"){ small{$"¿No tienes una cuenta? regístrate"} } }
     }
 }

@@ -32,8 +32,7 @@ module "lib"
     }
     parse_url_session::&db, url
     {
-        if url == "" { url = url_encode(current_url(@true, @false)) }
-
+        if url == "" { url = url_encode(current_url(@true, @false) + "?ids=@ids") }
         ids = dbr.getSID(db)
         url = url_dcode(url)
 		url = replace(url,"@token",ids)

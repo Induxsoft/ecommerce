@@ -1,0 +1,48 @@
+#include "ddm.dkh"
+model ""
+{
+    #include "induxsoft.abstracts.ddm"
+
+    entity "tuser"
+    {
+        @"sys_pk" int key required autoincrement
+        @"sys_guid" string(32) unique required
+        @"sys_dtcreated" datetime
+        @"sys_timestamp" datetime required
+        @"sys_info" string(32)
+        @"sys_user" string(32)
+        @"sys_lastuser" string(32)
+        @"sys_exported" bool
+        @"sys_dtexported" datetime
+        @"sys_recver" int
+        @"sys_deleted" bool
+        @"sys_lock" int
+
+        @"locked" bool 
+        @"message" string(255) 
+        @"notes" memo 
+        @"pwd" string(32) 
+        @"userid" string(120) unique required
+        @"username" string(120) required
+        @"pwdmd5" string(64) 
+        @"external" bool    //Si es true, el usuario se consiera externo
+    }
+
+    entity "tuserpro": "TableModel"
+    {
+        @"ref_user" ref:"tuser" unique required
+        @"email" string(255) unique required
+        @"mobile" string(15) unique required
+    }
+
+    entity "pwd_chg_req"
+    {
+        @"rcode" string(32)
+        @"dtcreated" datetime
+        @"timestamp" datetime
+        @"uid" string(32)
+        @"used" datetime
+        @"lastsend" datetime
+        @"sendcount" int
+    }
+}
