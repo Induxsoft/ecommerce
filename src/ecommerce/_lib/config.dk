@@ -7,6 +7,12 @@ module
 	@url_signup = "/-/signup/"
 	@url_profile = "/-/me/"
 	@url_pwd_chg_req = "/-/pwd-chg-req/"
+	@url_pwd_chq_apply = "/-/pwd-chq-apply/"
 
-	@SID_TIME_LIFE=1440 // 24 horas expresadas en minutos
+	@req_pwd_max_days = 7	// Vigencia en días de una solicitud de cambio de contraseña
+
+	// Envio de correos
+	@SID_TIME_LIFE = 1440 // Tiempo de sesión activa (24 horas) expresadas en minutos
+	@TIME_BETWEEN = 10	// Tiempo entre solicitudes de envio de corre expresadas en segundos
+	@MAX_ATTEMPS = 10 // Cantidad de veces que se puede solicitar un renvío de correo por sms
 }

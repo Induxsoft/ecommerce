@@ -2,19 +2,108 @@
 #!
 module "Request password change"
 {
+    #include "v12.com.dkl"
+
+    failure_message = ""
+    success_message = ""
+
+    // function hola()
+    // {
+    //     @a = "hola"
+    //     function mundo()
+    //     {
+    //         @a = @a + " mundo" 
+    //     }
+    //     do mundo()
+    //     do rise_error(0,@a)
+    // }
+
+    // do hola()
+
     if toupper(@@(@http_context, "request/headers/REQUEST_METHOD")) == "POST"
     {
         // enviar correo usando v12.com
+        ref post = ifnull(@@(@http_context, "&request/post"), record.create())
+        ref db = get_database()
+
+        // Obtener información del usuario
+        if @@(post, "$uid") == "" { do rise_error(0, "Se esperaba el parámetro 'uid") }
+        ref user = dbr.rec(db, "SELECT  u.userid uid, up.email FROM tuser u INNER JOIN tuserpro up ON up.ref_user = u.sys_pk WHERE u.userid = @uid OR up.email = @uid OR up.mobile = @uid LIMIT 1;", post)
+    
+        if isnull(user) { do rise_error(0, "Id de usuario inválido") }
+
+        // Validar si ya hay una solicitud previa
+        new prm 
+        {
+            @"uid": @@(user, "uid")
+            @"max_days":@req_pwd_max_days
+        }
+        sql_prev = "
+            SELECT rcode, IFNULL(sendcount, 0) sendcount, IFNULL(TIMESTAMPDIFF(SECOND, lastsend, NOW()), 0) secs
+            FROM pwd_chg_req
+            WHERE uid = @uid 
+                AND IFNULL(TIMESTAMPDIFF(DAY, timestamp, NOW()), 0) < @max_days 
+                AND IFNULL(used, 0) = 0 
+            ORDER BY timestamp DESC LIMIT 1;
+        "
+        ref prev = dbr.rec(db, sql_prev, prm)
+        do dbr.begin(db)
+        
+        if not(isnull(prev)) 
+        { 
+            if @@(prev, "#secs") < @TIME_BETWEEN { do rise_error(0,"Ha transcurrido muy poco tiempo desde que se realizó el último envío de correo, debe esperar algunos segundos y volver a intentar.")}
+            if @@(prev, "#sendcount") > @MAX_ATTEMPS { do rise_error(0,"Demasiados intentos de reenvío de correo, contacte a soporte técnico o por seguridad, espere algunos días.")}    
+            prm<"rcode">: @@(prev, "rcode") 
+        }
+        else 
+        { 
+            prm<"rcode">: uuid() 
+            do dbr.execute(db,"INSERT INTO pwd_chg_req (rcode,timestamp,uid,used,lastsend,sendcount) VALUES (@rcode,now(),@uid,null,null,0);", prm)
+        }
+
+        email_subject = field.dstr(post, "email_subject", "Solicitud de cambio de contraseña")
+
+        // Preparar el contenido del correo
+        new message
+        {
+            @"channel":"smtp.com" //Nombre del canal de envío
+            @"to":@@(user,"email") //Dirección del destinatario
+            // @"cc":"" //Dirección de copia
+            // @"cco":"" //Dirección de copia oculta
+            // @"reply":"" //Dirección de respuesta
+            @"subject":email_subject //Asunto del mensaje
+            @"message":"" //Cuerpo del mensaje (html o texto) *tomar de la plantilla
+            @"text_message":"" //Versión de solo texto del mensaje
+            @"template":"_default_req_changepwd.htt" //Nombre de una plantilla usada para el mensaje
+        }
+        new replace
+        {
+            @"url": current_url(@true, @false) + @url_pwd_chq_apply
+        }
+
+        do v12.com.sendMessage(db, message, replace)
+        success_message = "Se ha enviado un mensaje de correo electrónico con las instrucciones de recuperación de contraseña"
+        do dbr.commit(db)
+
+        exception
+        {
+            if isset("db"){ if dbr.in_transaction(db) { do dbr.rollback(db) } } 
+            failure_message = last_error()
+        }
     }
-    else 
+    
+    #$ div
     {
-        #$ div
+        div(class="alert alert-danger #<ifstr(failure_message == '', 'd-none', '')>"){ $"#<failure_message>" }
+        div(class="alert alert-success #<ifstr(success_message == '', 'd-none', '')>"){ $"#<success_message>" }
+        
+        form(action="." method="POST")
         {
             h1{$"Solicitar cambio de contraseña"}
             input(name="uid" placeholder="Correo o número de teléfono")
             button{$"Solicitar"}
 
             div { a(href="#<@url_login>"){ small{$"¿Ya tienes una cuenta? Inicia sesión"} } }
-        }   
+        }
     }
 }

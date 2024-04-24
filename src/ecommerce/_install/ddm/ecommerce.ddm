@@ -38,7 +38,6 @@ model ""
     entity "pwd_chg_req"
     {
         @"rcode" string(32)
-        @"dtcreated" datetime
         @"timestamp" datetime
         @"uid" string(32)
         @"used" datetime

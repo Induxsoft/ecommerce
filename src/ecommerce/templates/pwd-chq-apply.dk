@@ -1,0 +1,19 @@
+#include "dkli.dkh"
+#!
+module "Aply password change"
+{
+    if toupper(@@(@http_context, "request/headers/REQUEST_METHOD")) == "POST"
+    {
+        // aplicar el cambio de la contraseña
+    }
+    #$ div
+    {
+        form(action="." method="POST")
+        {
+            h1{$"Aplicar cambio de contraseña"}
+            label{$"Nueva contraseña"}
+            input(name="pwd")
+            input(name="rcode")
+        }
+    }
+}
