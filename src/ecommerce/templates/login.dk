@@ -56,24 +56,49 @@ module "login"
 		exception
 		{
             do errordet(@false)
+            get<"uid">: @@(pos,"$uid")
             if @@(pos,"$exit_url_encode") != "" { get<"exit_url_encode">: @@(pos,"$exit_url_encode") }
 			message = last_error()
 		}
     }
 
-    #$ form(action="." method="POST")
+    input_class = "form-control rounded-0 shadow-none mb-2 mt-1"
+
+    #$ div
     {
         div(class="alert alert-danger #<ifstr(message == '', 'd-none', '')>"){ $"#<message>" }
-        input(type="hidden" name="exit_url_encode" value="#<@@(get,'exit_url_encode')>")
 
-        h1{$"Iniciar sesión"}
-        label{$"Usuario"}
-        input(name="uid" value="#<@@(pos,'uid')>")
-        label{$"Contraseña"}
-        input(name="pwd" type="password")
-        button{$"Aceptar"}
+        div(class="d-flex justify-content-center align-items-center mt-5")
+        {
+            form(action="." method="POST" class="p-5 bg-white" style="min-width: 30vw;")
+            {
+                h2(class="mb-5 title_forms"){$"Iniciar sesión"}
 
-        div { a(href="#<@url_pwd_chg_req>"){ small{$"Recuperar contraseña"} } }
-        div { a(href="#<@url_signup>"){ small{$"¿No tienes una cuenta? regístrate"} } }
+                input(type="hidden" name="exit_url_encode" value="#<@@(get,'exit_url_encode')>")
+                
+                h6{$"Ingresa tu id de usuario"}
+                input(name="uid" value="#<@@(get,'uid')>" placeholder="Correo o teléfono" class="#<input_class>" required="true")
+                h6{$"Ingresa tu contraseña"}
+                input(name="pwd" type="password" placeholder="Contraseña" class="#<input_class> ipt_view_pwd")
+
+                div(class="form-check mb-2")
+                {
+                    input(class="form-check-input" type="checkbox" value="" id="chk_view_pwd")
+                    label(class="form-check-label" "for"="chk_view_pwd"){ $"Ver contraseña" }
+                }
+
+                div(class="mt-2 mb-5")
+                {
+                    div { a(href="#<@url_pwd_chg_req>" class="links_forms"){ small{$"Recuperar contraseña"} } }
+                    div { a(href="#<@url_signup>" class="links_forms"){ small{$"¿No tienes una cuenta? regístrate aquí"} } }
+                }
+                div(class="d-flex justify-content-end")
+                {
+                    button(class="btn button_forms"){$"Ingresar"}
+                }
+            }
+        }
+
+        script(src="#<@js_ecommerce_forms>"){$""}
     }
 }

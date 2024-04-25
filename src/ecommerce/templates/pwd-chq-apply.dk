@@ -2,18 +2,82 @@
 #!
 module "Aply password change"
 {
+    ref get = @@(@http_context, "&request/get")
+    ref pos = ifnull(@@(@http_context, "&request/post"), record.create())
+    message = ""
+    
     if toupper(@@(@http_context, "request/headers/REQUEST_METHOD")) == "POST"
     {
-        // aplicar el cambio de la contraseña
+        if @@(pos,"$rcode")=="" { do rise_error(0,"Se esperaba el parámetro 'rcode'")}
+
+        ref db = get_database()
+
+        sql = "
+            SELECT p.uid, ISNULL(p.used) not_used, up.email
+            FROM pwd_chg_req p
+                INNER JOIN tuser u ON p.uid = u.userid
+                INNER JOIN tuserpro up ON up.ref_user = u.sys_pk
+            WHERE p.rcode = @rcode 
+            LIMIT 1;"
+        
+        ref user = dbr.rec(db, sql, pos)
+
+        if isnull(user) {
+            do rise_error(0, "Código inválido")
+        }
+        if not(@@(user,"#not_used")) {
+            do rise_error(0, "El código ya ha sido usado")
+        }
+
+        new data
+        {
+            @"pwd": toupper(md5e(@@(pos,"$pwd"),"Unicode"))
+            @"pwdmd5": toupper(md5(@@(pos,"$pwd")))
+        }
+        pos<"uid">: @@(user,"uid")
+
+        do dbr.update(db, "tuser", data, "userid = @uid", pos)
+        do dbr.execute(db, "UPDATE pwd_chg_req SET used = now() WHERE rcode = @rcode;", pos)
+
+        @http_context<"response/headers/location">: current_url(@true, @false) + @url_login + "?uid=" + @@(user, "email")
+
+        exception
+        {
+            get<"rcode">: @@(pos,"$rcode")
+            message = last_error()
+        }
     }
+    
+    input_class = "form-control rounded-0 shadow-none mb-2 mt-1"
+    
     #$ div
     {
-        form(action="." method="POST")
+        div(class="alert alert-danger #<ifstr(message == '', 'd-none', '')>"){ $"#<message>" }
+
+        div(class="d-flex justify-content-center align-items-center mt-5")
         {
-            h1{$"Aplicar cambio de contraseña"}
-            label{$"Nueva contraseña"}
-            input(name="pwd")
-            input(name="rcode")
+            form(action="." method="POST" class="p-5 bg-white frm_valide_pwd" style="min-width: 30vw;")
+            {
+                h2(class="mb-4 title_forms"){$"Aplicar cambio de contraseña"}
+
+                input(name="rcode" type="hidden" value="#<@@(get,'rcode')>")
+                h6{$"Nueva contraseña"}
+                input(name="pwd" type="password" class="#<input_class> ipt_pwd ipt_view_pwd")
+                h6{$"Confirmar contraseña"}
+                input(type="password" class="#<input_class> ipt_pwd_confirm")
+
+                div(class="form-check mb-2")
+                {
+                    input(class="form-check-input" type="checkbox" value="" id="chk_view_pwd")
+                    label(class="form-check-label" "for"="chk_view_pwd"){ $"Ver contraseña" }
+                }
+
+                div(class="d-flex justify-content-end pt-4")
+                {
+                    button(class="btn button_forms"){$"Aplicar cambios"}
+                }
+            }
         }
+        script(src="#<@js_ecommerce_forms>"){$""}
     }
 }

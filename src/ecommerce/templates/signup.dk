@@ -13,17 +13,20 @@ module "signup"
 
         nombre = @@(pos,"$nombre")
         _email = @@(pos,"$email")
-        mobile = @@(pos,"$mobile")
+        mobile = replace(replace(@@(pos,"$mobile"), " ", ""), "-", "")
 
         if nombre == "" { do rise_error(0, "Se esperaba el parámetro 'nombre'") }
         if _email == "" { do rise_error(0, "Se esperaba el parámetro 'email'") }
         if mobile == "" { do rise_error(0, "Se esperaba el parámetro 'mobile'") }
 
         if not(isnull(dbr.rec(db, "SELECT sys_pk FROM tuserpro WHERE email = @email LIMIT 1;", pos))) {
-            do rise_error(0, "El correo proporcionado ya está registrado")
+            do rise_error(0, "El correo proporcionado ya se encuentra registrado")
         }
         if not(isnull(dbr.rec(db, "SELECT sys_pk FROM tuserpro WHERE mobile = @mobile LIMIT 1;", pos))) {
-            do rise_error(0, "El teléfono proporcionado ya está registrado")
+            do rise_error(0, "El teléfono proporcionado ya se encuentra registrado")
+        }
+        if length(mobile) > 15 {
+            do rise_error(0, "El número de teléfono no debe superar una longitud de más de 15 carcateres")
         }
 
         new userpro
@@ -70,24 +73,46 @@ module "signup"
         }
     }
 
-    #$ form(action="." method="POST")
+    input_class = "form-control form-control-sm rounded-0 shadow-none mb-2 mt-1"
+
+    #$ div
     {
         div(class="alert alert-danger #<ifstr(message == '', 'd-none', '')>"){ $"#<message>" }
-        input(type="hidden" name="exit_url_encode" value="#<@@(get,'exit_url_encode')>")
 
-        h1{$"Registrarse"}
-        label{$"Nombre"}
-        input(name="nombre" required="true" value="#<@@(pos,'nombre')>")
-        label{$"Correo"}
-        input(name="email" required="true" type="email" value="#<@@(pos,'email')>")
-        label{$"Teléfono"}
-        input(name="mobile" required="true" value="#<@@(pos,'mobile')>")
-        label{$"Contraseña"}
-        input(name="pwd" type="password" value="#<@@(pos,'pwd')>")
-        label{$"Confirmar contraseña"}
-        input(id="ipt_confirm_pdw" type="password")
-        button{$"Registrarme"}
+        div(class="d-flex justify-content-center align-items-center mt-5")
+        {
+            form(action="." method="POST" class="p-5 bg-white frm_valide_pwd" style="min-width: 30vw;")
+            {
+                h2(class="mb-4 title_forms"){$"Regístrate"}
 
-        a(href="#<@url_login>"){ small{$"¿Ya tienes una cuenta? Incia sesión"} }
+                input(type="hidden" name="exit_url_encode" value="#<@@(get,'exit_url_encode')>")
+
+                h6{$"Nombre"}
+                input(name="nombre" required="true" value="#<@@(pos,'nombre')>" class="#<input_class>" placeholder="Nombre de usuario" maxlength="120")
+                h6{$"Correo"}
+                input(name="email" required="true" type="email" value="#<@@(pos,'email')>" class="#<input_class>" placeholder="micorreo@gmail.com" maxlength="255")
+                h6{$"Teléfono"}
+                input(name="mobile" required="true" value="#<@@(pos,'mobile')>" class="#<input_class>" placeholder="1928374650" type="number" step="1" max="999999999999999")
+                h6{$"Contraseña"}
+                input(name="pwd" type="password" value="#<@@(pos,'pwd')>" class="#<input_class> ipt_pwd ipt_view_pwd" placeholder="Contraseña")
+                h6{$"Confirmar contraseña"}
+                input(id="ipt_confirm_pdw" type="password" class="#<input_class> ipt_pwd_confirm" placeholder="Contraseña")
+                div(class="form-check mb-2")
+                {
+                    input(class="form-check-input" type="checkbox" value="" id="chk_view_pwd")
+                    label(class="form-check-label" "for"="chk_view_pwd"){ small{$"Ver contraseña"} }
+                }
+
+                div(class="mt-2 mb-4")
+                {
+                    a(href="#<@url_login>" class="links_forms"){ small{$"¿Ya tienes una cuenta? Incia sesión"} }
+                }
+                div(class="d-flex justify-content-end")
+                {
+                    button(class="btn button_forms"){$"Registrarme"}
+                }
+            }
+        }
+        script(src="#<@js_ecommerce_forms>"){$""}
     }
 }

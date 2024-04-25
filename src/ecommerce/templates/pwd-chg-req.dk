@@ -65,7 +65,7 @@ module "Request password change"
         }
         new replace
         {
-            @"url": current_url(@true, @false) + @url_pwd_chq_apply
+            @"url": current_url(@true, @false) + @url_pwd_chq_apply + "?rcode=" + @@(prm,"$rcode")
         }
 
         // Enviar correo
@@ -86,13 +86,27 @@ module "Request password change"
         div(class="alert alert-danger #<ifstr(failure_message == '', 'd-none', '')>"){ $"#<failure_message>" }
         div(class="alert alert-success #<ifstr(success_message == '', 'd-none', '')>"){ $"#<success_message>" }
         
-        form(action="." method="POST")
+        #! if success_message == ""
         {
-            h1{$"Solicitar cambio de contraseña"}
-            input(name="uid" placeholder="Correo o número de teléfono")
-            button{$"Solicitar"}
+            #$ div(class="d-flex justify-content-center align-items-center mt-5")
+            {
+                form(action="." method="POST" class="p-5 bg-white" style="min-width: 30vw;")
+                {
+                    h2(class="mb-4 title_forms"){$"Solicitar cambio de contraseña"}
 
-            div { a(href="#<@url_login>"){ small{$"¿Ya tienes una cuenta? Inicia sesión"} } }
+                    h6{$"Ingresa tu correo o número de teléfono, te enviaremos un código de solicitud a tu correo para continuar con el proceso."}
+                    input(name="uid" placeholder="Correo o número de teléfono" class="form-control rounded-0 shadow-none mb-2 mt-1" required="true")
+                    
+                    div(class="mt-2 mb-4")
+                    {
+                        div { a(href="#<@url_login>" class="links_forms"){ small{$"¿Ya tienes una cuenta? Inicia sesión"} } }
+                    }
+                    div(class="d-flex justify-content-end")
+                    {
+                        button(class="btn button_forms"){$"Solicitar"}
+                    }
+                }
+            }
         }
     }
 }

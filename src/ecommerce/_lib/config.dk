@@ -15,4 +15,7 @@ module
 	@SID_TIME_LIFE = 1440 // Tiempo de sesión activa (24 horas) expresadas en minutos
 	@TIME_BETWEEN = 10	// Tiempo entre solicitudes de envio de corre expresadas en segundos
 	@MAX_ATTEMPS = 10 // Cantidad de veces que se puede solicitar un renvío de correo por sms
+
+	// Recursos estáticos
+	@js_ecommerce_forms = "/$/js/forms.js"
 }

@@ -2,10 +2,7 @@
 #!
 module "Me (profile info)"
 {
-    do _map_function(@lib_dbr,"induxsoft.Connections.Manager","ResetStorage","reset","void","void")
-
     error_message = ""
-    success_message = ""
     ref db = get_database()
 
     new prm { @"uid": @@(@http_context, "$session/user/uid") }
@@ -21,7 +18,8 @@ module "Me (profile info)"
     if toupper(@@(@http_context, "request/headers/REQUEST_METHOD")) == "POST"
     {
         ref post = ifnull(@@(@http_context, "&request/post"), record.create())
-
+        mobile = replace(replace(@@(post,"$mobile"), " ",""), "-","")
+        
         if trim(@@(post,"$username")) == "" {
             do rise_error(0, "El nombre no puede estar vacío")
         }
@@ -38,6 +36,9 @@ module "Me (profile info)"
         if not(isnull(dbr.rec(db, "SELECT sys_pk FROM tuserpro WHERE mobile = @mobile AND ref_user <> @sys_pk LIMIT 1;", post))) {
             do rise_error(0, "El teléfono proporcionado ya está registrado")
         }
+        if length(mobile) > 15 {
+            do rise_error(0, "El número de teléfono no debe superar una longitud de más de 15 carcateres")
+        }
 
         new user
         {
@@ -52,7 +53,7 @@ module "Me (profile info)"
             @"sys_recver": @@(post,"#up_recver")
             @"sys_timestamp*": now()
             @"email": @@(post,"$email")
-            @"mobile": @@(post,"$mobile")
+            @"mobile": mobile
         }
 
         if trim(@@(post,"$pwd")) != ""
@@ -63,41 +64,72 @@ module "Me (profile info)"
 
         do dbr.save(db, "tuser", user)
         do dbr.save(db, "tuserpro", userpro)
-        success_message = "Se guardaron los cambios"
-        ref user = dbr.rec(db, sql_user, prm)
+
+        @http_context<"response/headers/location">: current_url(@false,@true)
     }
 
     exception { 
         error_message = last_error() 
     }
 
-    #$ form(action="." method="POST")
+    #$ div(class="container-sm")
     {
         div(class="alert alert-danger #<ifstr(error_message == '', 'd-none', '')>"){ $"#<error_message>" }
-        div(class="alert alert-success #<ifstr(success_message == '', 'd-none', '')>"){ $"#<success_message>" }
-        input(name="sys_pk" type="hidden" value="#<@@(user,'sys_pk')>")
-        input(name="sys_recver" type="hidden" value="#<@@(user,'sys_recver')>")
-        input(name="up_pk" type="hidden" value="#<@@(user,'up_pk')>")
-        input(name="up_recver" type="hidden" value="#<@@(user,'up_recver')>")
         
-        h1{$"Mi perfil"}
-        label{$"Nombre"}
-        input(name="username" value="#<@@(user,'username')>")
-        label{$"Correo"}
-        input(name="email" value="#<@@(user,'email')>")
-        label{$"Teléfono"}
-        input(name="mobile" value="#<@@(user,'mobile')>")
-
-        details
+        form(action="." method="POST" class="p-5 bg-white mt-4")
         {
-            summary{$"Cambiar contraseña"}
-            div
+            h2(class="mb-5 title_forms"){$"Mi perfil"}
+
+            input(name="sys_pk" type="hidden" value="#<@@(user,'sys_pk')>")
+            input(name="sys_recver" type="hidden" value="#<@@(user,'sys_recver')>")
+            input(name="up_pk" type="hidden" value="#<@@(user,'up_pk')>")
+            input(name="up_recver" type="hidden" value="#<@@(user,'up_recver')>")
+
+            div(class="mb-4 pb-4 border-bottom")
             {
-                label{$"Nueva contraseña"}
-                input(name="pwd")
+                h4(class="m-0"){$"General"}
+                p(class="text-sm text-muted"){$"Administra la información básica de tu perfil"}
+
+                div(class="row align-items-center mb-3")
+                {
+                    div(class="col-md-2"){ label(class="form-label m-0"){$"Nombre"} }
+                    div(class="col-xl-4"){ input(name="username" value="#<@@(user,'username')>" maxlength="120" class="form-control form-control-sm shadow-none") }
+                }
+                div(class="row align-items-center mb-3")
+                {
+                    div(class="col-md-2"){ label(class="form-label m-0"){$"Correo"} }
+                    div(class="col-xl-4"){ input(name="email" value="#<@@(user,'email')>" maxlength="255" class="form-control form-control-sm shadow-none") }
+                }
+                div(class="row align-items-center mb-3")
+                {
+                    div(class="col-md-2"){ label(class="form-label m-0"){$"Teléfono"} }
+                    div(class="col-xl-4"){ input(name="mobile" value="#<@@(user,'mobile')>" type="number" class="form-control form-control-sm shadow-none" step="1" max="999999999999999") }
+                }
+            }
+            div(class="mb-5")
+            {
+                h4(class="m-0"){$"Seguridad"}
+                p(class="text-sm text-muted"){$"Administra los datos de carácter sensible para la seguridad de tu perfil"}
+
+                details
+                {
+                    summary{$"Cambiar contraseña"}
+                    div(class="row align-items-center mt-3")
+                    {
+                        div(class="col-md-2"){ label(class="form-label m-0"){$"Nueva contraseña"} }
+                        div(class="col-xl-4"){ input(name="pwd" type="password" placeholder="Nueva contraseña" class="form-control form-control-sm shadow-none") }
+                    }
+                }
+                // div(class="row align-items-center mb-3")
+                // {
+                //     div(class="col-md-2"){ label(class="form-label m-0"){$"Cambiar contraseña"} }
+                //     div(class="col-xl-4"){ input(name="pwd" type="password" placeholder="Nueva contraseña" class="form-control form-control-sm shadow-none") }
+                // }
+            }
+            div(class="d-flex justify-content-end")
+            {
+                button(class="btn button_forms"){$"Guardar"}
             }
         }
-
-        button(class="mt-4"){$"Guardar"}
     }
 }
