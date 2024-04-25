@@ -7,19 +7,6 @@ module "Request password change"
     failure_message = ""
     success_message = ""
 
-    // function hola()
-    // {
-    //     @a = "hola"
-    //     function mundo()
-    //     {
-    //         @a = @a + " mundo" 
-    //     }
-    //     do mundo()
-    //     do rise_error(0,@a)
-    // }
-
-    // do hola()
-
     if toupper(@@(@http_context, "request/headers/REQUEST_METHOD")) == "POST"
     {
         // enviar correo usando v12.com
@@ -81,7 +68,9 @@ module "Request password change"
             @"url": current_url(@true, @false) + @url_pwd_chq_apply
         }
 
+        // Enviar correo
         do v12.com.sendMessage(db, message, replace)
+        do dbr.execute(db,"update pwd_chg_req set lastsend = now(), sendcount = ifnull(sendcount, 0) + 1 where rcode = @rcode",prm)
         success_message = "Se ha enviado un mensaje de correo electrónico con las instrucciones de recuperación de contraseña"
         do dbr.commit(db)
 
