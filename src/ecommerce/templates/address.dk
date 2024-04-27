@@ -1,0 +1,131 @@
+#include "dkli.dkh"
+#!
+module "Direcciones de envío"
+{
+    error_message = ""
+    do required_session(@true)
+    ref db = get_database()
+
+    if toupper(@@(@http_context, "request/headers/REQUEST_METHOD")) == "POST"
+    {
+        // insertar direcciones
+    }
+    
+    new prm
+    {
+        @"uid": @@(@http_context, "session/user/uid")
+    }
+    sql_address = "
+        SELECT adr.label, p.codigo pais_code, adr.zip, adr.addr_l1, adr.addr_l2, adr.phone, adr.recip_name, adr.notes
+        FROM ecom_usr_adr adr
+            INNER JOIN tuser u ON adr.ref_user = u.sys_pk
+            INNER JOIN pais p ON adr.country = p.sys_pk
+        WHERE u.userid = @uid;
+    "
+    ref address_list = dbr.list(db, sql_address, prm)
+
+    exception { error_message = last_error() }
+
+    input_class = "form-control form-control-sm shadow-none"
+    
+    #$ div(class="container-sm")
+    {
+        div(class="alert alert-danger #<ifstr(error_message == '', 'd-none', '')>"){ $"#<error_message>" }
+
+        div(class="p-5 bg-white mt-4 border shadow-sm")
+        {
+            h3(class="mb-5 title_forms"){$"Mi libreta de direcciones"}
+            div(class="mb-2")
+            {
+                button(class="btn btn-sm d-flex align-items-center gap-2 text-secondary" "data-bs-toggle"="modal" "data-bs-target"="#mdl_add_address"){
+                    $"#<@ICON_PLUS_CIRCLE>"
+                    $"Agregar"
+                }
+            }
+            div(class="row" style="min-height:50vh; max-height: 60vh; overflow: auto;")
+            {
+                #! go foreach.lobj(index:i, value:address) with(address_list)
+                {
+                    #$ div(class="col-sm-6 border")
+                    {
+                        p{$"#<@@(address,'$label')>"}
+                    }
+                }
+            }
+        }
+
+        div(class="modal fade" id="mdl_add_address" tabindex="-1" "aria-hidden"="true" "data-bs-backdrop"="false")
+        {
+            div(class="modal-dialog modal-dialog-centered")
+            {
+                form(action="." method="POST" class="modal-content rounded-0 border-0 box_shadow" )
+                {
+                    // div(class="modal-header py-2 px-3 button_forms rounded-0")
+                    // {
+                    //     $"" //button(type="button" class="btn-close btn-sm shadow-none" "data-bs-dismiss"="modal"){$""}
+                    // }
+                    div(class="modal-body px-4")
+                    {
+                        div(class="my-4")
+                        {
+                            h3(class="modal-title title_forms"){$"Agregar dirección"}
+                        }
+                        div(class="mb-2")
+                        {
+                            h6{$"Nombre*"}
+                            input(name="label" class="#<input_class>" placeholder="Mi casa" required="true" maxlength="35")
+                        }
+                        div(class="row mb-2")
+                        {
+                            div(class="col-8")
+                            {
+                                h6{$"Pais*"}
+                                select(name="country" class="form-select form-select-sm shadow-none"){$""}
+                            }
+                            div(class="col-4")
+                            {
+                                h6{$"Código postal*"}
+                                input(name="zip" class="#<input_class>" placeholder="29039" required="true" maxlength="15")
+                            }
+                        }
+                        div(class="mb-2")
+                        {
+                            h6{$"Dirección"}
+                            input(name="addr_l1" class="#<input_class>" placeholder="Dirección" maxlength="512")
+                        }
+
+                        div(class="mb-2")
+                        {
+                            h6{$"Colonia"}
+                            input(name="addr_l2" class="#<input_class>" placeholder="Colonia" maxlength="512")
+                        }
+
+                        div(class="mb-2")
+                        {
+                            h6{$"Telefono"}
+                            input(name="phone" class="#<input_class>" placeholder="Teléfono" maxlength="50")
+                        }
+
+                        div(class="mb-2")
+                        {
+                            h6{$"Persona que recibe"}
+                            input(name="recip_name" class="#<input_class>" placeholder="Nombre de la persona que recibe" maxlength="100")
+                        }
+
+                        div(class="mb-2")
+                        {
+                            h6{$"Referencias"}
+                            textarea(name="notes" class="#<input_class>" placeholder="Referencias del lugar"){$""}
+                        }
+                        small(class="text-muted"){$"* Campos requeridos"}
+                    }
+                    div(class="modal-footer")
+                    {
+                        button(type="submit" class="btn btn-sm button_forms"){$"Agregar"}
+                        button(type="button" class="btn btn-sm btn-light" "data-bs-dismiss"="modal"){$"Cancelar"}
+                    }
+                }
+            }
+        }
+    }
+}

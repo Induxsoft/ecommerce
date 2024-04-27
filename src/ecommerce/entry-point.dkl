@@ -11,6 +11,7 @@ module "Controller configs"
 	#include "crudl/crudl.dk"
 	#include "_lib/config.dk"
 	#include "_lib/lib.dk"
+	#include "_lib/icons.dk"
 
 	@base_path="ecommerce"
 	@path_root="" // Establezca una ruta de ser necesario

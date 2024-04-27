@@ -30,6 +30,15 @@ module "lib"
         if isnull(db) { ref db = dbr.open(get_qn()) }
         return db
     }
+    required_session::goback
+    {
+        if @@(@http_context, "session/user/ids") == ""
+        {
+            url = path.concat(current_url(@true, @false), @url_login)
+            if goback { url = url + "exit_url_encode=" + url_encode(current_url(@false, @true)) }
+            @http_context<"response/headers/location">: url
+        }
+    }
     parse_url_session::&db, url
     {
         if url == "" { url = url_encode(current_url(@true, @false) + "?ids=@ids") }

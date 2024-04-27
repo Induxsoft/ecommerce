@@ -44,4 +44,31 @@ model ""
         @"lastsend" datetime
         @"sendcount" int
     }
+
+    entity "pais" : "TableModel"
+    {
+        @"codigo" string(8) unique required
+        @"codigotel" string(5)
+        @"nombre" string(100) unique required
+    }
+
+    entity "ecom_usr_adr":"TableModel"
+    {
+        @"ref_user" ref:"tuser" required
+        @"label" string(35) required
+        @"country" ref: "pais" required
+        @"zip" string(15) required
+        @"addr_l1" string(512)
+        @"addr_l2" string(512)
+        @"addr_l3" string(512)
+        @"phone" string(50)
+        @"recip_name" string(100)
+        @"notes" memo
+        
+        index "ecom_usr_adr_lbl1" unique
+        {
+            field "ref_user"
+            field "label"
+        }
+    }
 }
