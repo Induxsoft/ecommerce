@@ -35,7 +35,7 @@ module "lib"
         if @@(@http_context, "session/user/ids") == ""
         {
             url = path.concat(current_url(@true, @false), @url_login)
-            if goback { url = url + "exit_url_encode=" + url_encode(current_url(@false, @true)) }
+            if goback { url = url + "?exit_url_encode=" + url_encode(current_url(@false, @true)) }
             @http_context<"response/headers/location">: url
         }
     }

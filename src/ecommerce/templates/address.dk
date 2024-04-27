@@ -2,85 +2,181 @@
 #!
 module "Direcciones de envío"
 {
+    #include "uielements.dkl"
+
     error_message = ""
-    do required_session(@true)
+    do required_session(@false)
     ref db = get_database()
+    new prm { @"uid": @@(@http_context, "session/user/uid") }
 
     if toupper(@@(@http_context, "request/headers/REQUEST_METHOD")) == "POST"
     {
-        // insertar direcciones
+        ref post = ifnull(@@(@http_context, "&request/post"), record.create())
+
+        if trim(@@(post,"$label")) == "" { do rise_error(0, "Se esperaba el campo 'Nombre'" ) }
+        if trim(@@(post,"$country")) == "" { do rise_error(0, "Se esperaba el campo 'País'" ) }
+        if trim(@@(post,"$zip")) == "" { do rise_error(0, "Se esperaba el campo 'Código postal'" ) }
+
+        ref user = dbr.rec(db, "SELECT sys_pk FROM tuser WHERE userid = @uid LIMIT 1;", prm)
+        user<"label">: @@(post,"$label")
+
+        if @@(post,"#sys_pk") == 0 
+        {
+            if not(isnull(dbr.rec(db, "SELECT sys_pk FROM ecom_usr_adr WHERE ref_user=@sys_pk AND label=@label LIMIT 1;", user))){
+                do rise_error(0, "Ya se ha registrado el nombre del domicilio, por favor elija uno diferente.")
+            }
+            post<"ref_user">: @@(user,"#sys_pk")
+        }
+
+        do dbr.save(db, "ecom_usr_adr", post)
+        @http_context<"response/headers/location">: current_url(@false, @true)
+
+        exception { 
+            do errordet(@false)
+            error_message = last_error() 
+        }
+    }
+    else if toupper(@@(@http_context, "request/headers/REQUEST_METHOD")) == "DELETE"
+    {
+        ref get = @@(@http_context, "&request/get")
+        // intentar borrado físico
+        do dbr.execute(db, "DELETE FROM ecom_usr_adr WHERE sys_pk = @address", get)
+        exception{
+            // borrado lógico
+            do dbr.execute(db, "UPDATE ecom_usr_adr SET sys_deleted = 1, label = SUBSTRING(CONCAT('~',sys_pk,label),1,35) WHERE sys_pk = @address;", get)
+        }
     }
     
-    new prm
-    {
-        @"uid": @@(@http_context, "session/user/uid")
-    }
+    sql_countrs = "SELECT sys_pk, CONCAT(codigo, ' - ', nombre) country_desc FROM pais;"
     sql_address = "
-        SELECT adr.label, p.codigo pais_code, adr.zip, adr.addr_l1, adr.addr_l2, adr.phone, adr.recip_name, adr.notes
+        SELECT adr.sys_pk, adr.sys_recver, adr.label, p.codigo pais_code, adr.country, adr.zip, adr.addr_l1, 
+            adr.addr_l2, adr.phone, adr.recip_name, adr.notes
         FROM ecom_usr_adr adr
             INNER JOIN tuser u ON adr.ref_user = u.sys_pk
             INNER JOIN pais p ON adr.country = p.sys_pk
-        WHERE u.userid = @uid;
+        WHERE u.userid = @uid
+            AND IFNULL(adr.sys_deleted,0) = 0;
     "
+    
+    ref countrs_list = dbr.list(db, sql_countrs, @null)
     ref address_list = dbr.list(db, sql_address, prm)
 
-    exception { error_message = last_error() }
-
+    new sel_country
+    {
+        @"datatable*": countrs_list
+        @"id": "sel_country"
+        new member "attributes"
+        {
+            @"class": "form-select form-select-sm shadow-none"
+            @"name": "country"
+            @"required": ""
+        }
+        @"value_field": "sys_pk"
+        @"text_field": "country_desc"
+    }
     input_class = "form-control form-control-sm shadow-none"
     
-    #$ div(class="container-sm")
+    #$ div(class="")
     {
+        style{$'.address_card:hover{ border-color: var(--primary-color) !important;} '}
         div(class="alert alert-danger #<ifstr(error_message == '', 'd-none', '')>"){ $"#<error_message>" }
 
-        div(class="p-5 bg-white mt-4 border shadow-sm")
+        div(class="container-sm p-5 bg-white mt-4 border shadow-sm")
         {
-            h3(class="mb-5 title_forms"){$"Mi libreta de direcciones"}
-            div(class="mb-2")
+            h3(class="mb-4 title_forms"){$"Mi libreta de direcciones"}
+            div(class="mb-4")
             {
-                button(class="btn btn-sm d-flex align-items-center gap-2 text-secondary" "data-bs-toggle"="modal" "data-bs-target"="#mdl_add_address"){
-                    $"#<@ICON_PLUS_CIRCLE>"
+                button(class="btn btn-sm d-flex align-items-center gap-2 button_forms" onclick="address.open_address_modal()"){
+                    $"#<@ICON_CIRCLE_FILL>"
                     $"Agregar"
                 }
             }
-            div(class="row" style="min-height:50vh; max-height: 60vh; overflow: auto;")
+            div(style="min-height:50vh; max-height: 60vh; overflow: auto;")
             {
-                #! go foreach.lobj(index:i, value:address) with(address_list)
+                div(class="row p-0 m-0")
                 {
-                    #$ div(class="col-sm-6 border")
+                    #! go foreach.lobj(index:i, value:address) with(address_list)
                     {
-                        p{$"#<@@(address,'$label')>"}
+                        #$ div(class="col-sm-6 mb-4")
+                        {
+                            div(class="border p-3 rounded address_card h-100")
+                            {
+                                div(class="d-flex gap-2 align-content-center title_forms mb-2")
+                                {
+                                    div{ $"#<@ICON_GEO_ALT_24>" }
+                                    h6(class="m-0 flex-grow-1" style="line-height: 1.5rem;"){$"#<@@(address,'$label')>"}
+                                    div(class="dropdown dropstart")
+                                    {
+                                        button(class="btn btn-sm shadow-none text-secondary" type="button" id="btn_addr_option" "data-bs-toggle"="dropdown"){$"#<@ICON_THREE_DOTS>"}
+                                        ul(class="dropdown-menu" "aria-labelledby"="btn_addr_option")
+                                        {
+                                            li{ button(class="dropdown-item d-flex align-items-center gap-2 btn-sm" type="button" onclick="address.open_address_modal(#<@@(address,'#sys_pk')>)"){$"#<@ICON_PENCIL_FILL> Editar"} }
+                                            li{ button(class="dropdown-item d-flex align-items-center gap-2 btn-sm" type="button" onclick="InduxsoftCrudlModel.Delete(#<@@(address,'#sys_pk')>,'./?address=#<@@(address,'#sys_pk')>')"){$"#<@ICON_TRASH_FILL> Eliminar"} }
+                                        }
+                                    }
+                                }
+                                div
+                                {
+                                    small(class="d-block"){$"#<@@(address,'$zip')>, #<@@(address,'$addr_l1')>"}
+                                    small(class="d-block"){$"#<@@(address,'$addr_l2')>"}
+                                    small(class="d-block"){$"#<@@(address,'$phone')>"}
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
-        div(class="modal fade" id="mdl_add_address" tabindex="-1" "aria-hidden"="true" "data-bs-backdrop"="false")
+        div(class="modal fade" id="mdl_address" tabindex="-1" "aria-hidden"="true" "data-bs-backdrop"="false")
         {
-            div(class="modal-dialog modal-dialog-centered")
+            div(class="modal-dialog modal-dialog-centered modal-dialog-scrollable")
             {
                 form(action="." method="POST" class="modal-content rounded-0 border-0 box_shadow" )
                 {
-                    // div(class="modal-header py-2 px-3 button_forms rounded-0")
-                    // {
-                    //     $"" //button(type="button" class="btn-close btn-sm shadow-none" "data-bs-dismiss"="modal"){$""}
-                    // }
-                    div(class="modal-body px-4")
+                    input(type="hidden" name="sys_pk")
+                    input(type="hidden" name="sys_recver")
+                    
+                    div(class="modal-header border-0 py-0 px-4")
                     {
                         div(class="my-4")
                         {
-                            h3(class="modal-title title_forms"){$"Agregar dirección"}
+                            h3(class="modal-title title_forms"){$"Información de la dirección"}
                         }
+                    }
+                    div(class="modal-body px-4")
+                    {
                         div(class="mb-2")
                         {
                             h6{$"Nombre*"}
-                            input(name="label" class="#<input_class>" placeholder="Mi casa" required="true" maxlength="35")
+                            input(name="label" list="labels" class="#<input_class>" placeholder="Mi casa" required="true" maxlength="35")
+                            datalist(id="labels")
+                            {
+                                option(value="Mi casa")
+                                option(value="Mi escuela")
+                                option(value="Casa de mi mamá")
+                                option(value="Casa de mi papá")
+                                option(value="Casa de mi hermano")
+                                option(value="Casa de mi mejor amigo")
+                                option(value="Casa de mi jefe")
+                                option(value="Casa de mis padres")
+                                option(value="Casa de mis abuelos")
+                                option(value="Casa de mis suegros")
+                                option(value="Trabajo de mi mamá")
+                                option(value="Trabajo de mi papá")
+                                option(value="Trabajo de mi hermano")
+                                option(value="Trabajo de mi mejor amigo")
+                                option(value="Trabajo de mi pareja")
+                            }
                         }
                         div(class="row mb-2")
                         {
                             div(class="col-8")
                             {
                                 h6{$"Pais*"}
-                                select(name="country" class="form-select form-select-sm shadow-none"){$""}
+                                ##
+                                do uie.dbSelect(sel_country)
+                                ##
                             }
                             div(class="col-4")
                             {
@@ -93,25 +189,21 @@ module "Direcciones de envío"
                             h6{$"Dirección"}
                             input(name="addr_l1" class="#<input_class>" placeholder="Dirección" maxlength="512")
                         }
-
                         div(class="mb-2")
                         {
                             h6{$"Colonia"}
                             input(name="addr_l2" class="#<input_class>" placeholder="Colonia" maxlength="512")
                         }
-
                         div(class="mb-2")
                         {
                             h6{$"Telefono"}
                             input(name="phone" class="#<input_class>" placeholder="Teléfono" maxlength="50")
                         }
-
                         div(class="mb-2")
                         {
                             h6{$"Persona que recibe"}
                             input(name="recip_name" class="#<input_class>" placeholder="Nombre de la persona que recibe" maxlength="100")
                         }
-
                         div(class="mb-2")
                         {
                             h6{$"Referencias"}
@@ -121,11 +213,18 @@ module "Direcciones de envío"
                     }
                     div(class="modal-footer")
                     {
-                        button(type="submit" class="btn btn-sm button_forms"){$"Agregar"}
+                        button(type="submit" class="btn btn-sm button_forms"){$"Aceptar"}
                         button(type="button" class="btn btn-sm btn-light" "data-bs-dismiss"="modal"){$"Cancelar"}
                     }
                 }
             }
         }
+
+        script(src="#<@js_crud_model>"){$""}
+        script(src="#<@js_ecommerce_utils>"){$""}
+        script(src="#<@js_address>"){$""}
+        script{$'
+            address.address_list = #<to.json(address_list)>;
+        '}
     }
 }

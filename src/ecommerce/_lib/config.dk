@@ -19,4 +19,7 @@ module
 
 	// Recursos estáticos
 	@js_ecommerce_forms = "/$/js/forms.js"
+	@js_ecommerce_utils = "/$/js/utils.js"
+	@js_address = "/$/js/address.js"
+	@js_crud_model = "/$/js/induxsoft.crudl.model.js"
 }
