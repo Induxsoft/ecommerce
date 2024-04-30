@@ -1,0 +1,69 @@
+#include "dkli.dkh"
+#!
+module "General search"
+{
+    ref _db = get_database()
+    ref get = @@(@http_context,"&request/get")
+    prodsxp = 20 // productos por página
+
+    if @@(get,"#p") <= 0 { get<"p">: 1 }
+
+    new filters
+	{
+		@"x": @@(get,"$x")  //linea, marca o departamento
+		@"v": @@(get,"#v")  //clave primaria del elemento x
+		@"q": @@(get,"$q")  //cadena de filtro like, si se omite se asume %
+		@"p": @@(get,"#p")  //número de página a mostrar (si se omite, se asume 1)
+	}
+
+    limit = str((prodsxp * @@(filters,"#p")) - prodsxp) + "," + str(prodsxp * @@(filters,"#p"))
+
+    sql = ftext("
+        SELECT prod.sys_pk, prod.codigo, prod.descripcion, prod.costoultimo,
+            IFNULL(lin.descripcion,'') linea, IFNULL(mar.descripcion,'') marca, IFNULL(dep.descripcion,'') departamento
+        FROM producto prod
+            LEFT JOIN linea lin ON prod.ilinea = lin.sys_pk
+            LEFT JOIN marca mar ON prod.imarca = mar.sys_pk
+            LEFT JOIN departamento dep ON prod.idepartamento = dep.sys_pk
+        WHERE IF(IFNULL(@q,'%') = '%', true, prod.codigo LIKE CONCAT('%',@q,'%'))
+            AND IF(IFNULL(@x,'') = '', 
+                true,
+                CASE
+                    WHEN @x = 'linea' THEN lin.sys_pk = @v
+                    WHEN @x = 'marca' THEN mar.sys_pk = @v
+                    WHEN @x = 'departamento' THEN dep.sys_pk = @v
+                    ELSE true
+                END
+            )
+        LIMIT #<limit>;
+    ")
+
+    ref products = dbr.list(_db, sql, filters)
+
+    #$ div(class="container-sm p-5 bg-white")
+    {
+        div(class="row")
+        {
+            $""
+            #! go foreach.lobj(index:i, value:product) with(products)
+            {
+                #$ div(class="col-lg-4 col-sm-6 mb-4")
+                {
+                    div(class="px-3 py-5 border text-center h-100")
+                    {
+                        img(src="" onerror="this.src='/$/img/icons/default_product.png'" style="height: 9rem; width: 9rem;" class="mb-3")
+                        h6(class="mb-3"){$"#<@@(product,'$descripcion')>"}
+                        div(class="mb-3")
+                        {
+                            h6{$"$#<format(@@(product,'#costoultimo'),'#,###.00')>"}
+                        }
+                        div(class="")
+                        {
+                            button(class="btn btn-sm px-5 button_forms"){$"Agregar al carrito"}
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
