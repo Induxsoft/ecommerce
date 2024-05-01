@@ -2,9 +2,14 @@
 #!
 module "General search"
 {
+    #include "webcl.dkh"
+    #include "dbr.vars.dkl"
+
     ref _db = get_database()
     ref get = @@(@http_context,"&request/get")
     prodsxp = 20 // productos por página
+
+    // =============== BÚSQUEDA DE PRODUCTOS
 
     if @@(get,"#p") <= 0 { get<"p">: 1 }
 
@@ -16,16 +21,16 @@ module "General search"
 		@"p": @@(get,"#p")  //número de página a mostrar (si se omite, se asume 1)
 	}
 
-    limit = str((prodsxp * @@(filters,"#p")) - prodsxp) + "," + str(prodsxp * @@(filters,"#p"))
-
-    sql = ftext("
+    limit = str((prodsxp * @@(filters,"#p")) - prodsxp) + "," + str(prodsxp)
+    
+    sql = "
         SELECT prod.sys_pk, prod.codigo, prod.descripcion, prod.costoultimo,
             IFNULL(lin.descripcion,'') linea, IFNULL(mar.descripcion,'') marca, IFNULL(dep.descripcion,'') departamento
         FROM producto prod
             LEFT JOIN linea lin ON prod.ilinea = lin.sys_pk
             LEFT JOIN marca mar ON prod.imarca = mar.sys_pk
             LEFT JOIN departamento dep ON prod.idepartamento = dep.sys_pk
-        WHERE IF(IFNULL(@q,'%') = '%', true, prod.codigo LIKE CONCAT('%',@q,'%'))
+        WHERE IF(IFNULL(@q,'%') = '%', true, prod.codigo LIKE CONCAT('%',@q,'%') || prod.descripcion LIKE CONCAT('%',@q,'%'))
             AND IF(IFNULL(@x,'') = '', 
                 true,
                 CASE
@@ -36,11 +41,72 @@ module "General search"
                 END
             )
         LIMIT #<limit>;
-    ")
+    "
+    //do rise_error(0, ftext(sql))
+    ref products = dbr.list(_db, ftext(sql), filters)
 
-    ref products = dbr.list(_db, sql, filters)
+    // =============== IMAGENES DE PRODUCTOS
 
-    #$ div(class="container-sm p-5 bg-white")
+    mobile_device = contains(tolower(@@(@http_context,"request/headers/HTTP_USER_AGENT")),"mobile")
+
+    go foreach.lobj(index:i, value:product) with(products)
+    {
+        endpoint = @url_images
+        endpoint = replace(endpoint, "@sku", @@(product,"codigo")) //+ "?ids=" + @@(@http_context,"session/user/ids")
+        response = http.request(endpoint, "GET", @null, '')
+        ref data = ifnull(from.json(response), list.create())
+        
+        if list.count(data) > 0
+        {
+            ref first_image = list.obj(data, 0)
+            ref variations = @@(first_image, "&variations")
+
+            product<"url_img">: @@(first_image, "src")
+
+            if not(mobile_device)
+            {
+                for z = 0; z < list.count(variations)
+                {
+                    ref img = list.obj(variations, z)
+                    if @@(img, "#width") == 640 { product<"url_img">: @@(img, "src") }
+                }
+            }
+            else 
+            {
+                for z = 0; z < list.count(variations)
+                {
+                    ref img = list.obj(variations, z)
+                    if @@(img, "#width") == 320 { product<"url_img">: @@(img, "src") }
+                }
+            }
+        }
+    }
+
+    // =============== PAGINACIÓN
+    
+    curr_page = @@(get,"#p")
+    firs_page = 1
+    back_page = -99 // curr_page - 1
+    next_page = -99 // curr_page + 1
+    last_page = -99 // next_page
+
+    limit = "1000"
+    total_lst = list.count(dbr.list(_db, ftext(sql), filters))
+
+    if curr_page > 1 {
+        back_page = curr_page - 1
+    }
+    if total_lst > (((curr_page - 1) * prodsxp) + list.count(products)){
+        next_page = curr_page + 1
+    }
+    if next_page != -99 {
+        last_page = trun(div(total_lst, prodsxp))
+        resi = mod(total_lst, prodsxp)
+        if resi > 0 { last_page = last_page + 1 }
+    }
+
+
+    #$ div(class="container-sm p-5 bg-white mt-4")
     {
         div(class="row")
         {
@@ -49,21 +115,63 @@ module "General search"
             {
                 #$ div(class="col-lg-4 col-sm-6 mb-4")
                 {
-                    div(class="px-3 py-5 border text-center h-100")
+                    div(class="px-3 pb-5 pt-4 text-center h-100 border" style="background-color: #FFF;")
                     {
-                        img(src="" onerror="this.src='/$/img/icons/default_product.png'" style="height: 9rem; width: 9rem;" class="mb-3")
-                        h6(class="mb-3"){$"#<@@(product,'$descripcion')>"}
-                        div(class="mb-3")
+                        div(class="text-end")
                         {
-                            h6{$"$#<format(@@(product,'#costoultimo'),'#,###.00')>"}
+                            button(class="btn btn-sm shadow-none"){$"#<@ICON_HEART_24>"}
                         }
-                        div(class="")
+                        div
+                        {
+                            img(src="#<@@(product,'$url_img')>" onerror="this.src='/$/img/icons/default_product.png'" loading="lazy" style="height: 9rem; width: 9rem; object-fit: contain;" class="mb-3")
+                            h6(class="mb-3"){$"#<@@(product,'$descripcion')>"}
+                            div(class="mb-3")
+                            {
+                                h6{$"$#<format(@@(product,'#costoultimo'),'#,###.00')>"}
+                            }
+                        }
+                        div
                         {
                             button(class="btn btn-sm px-5 button_forms"){$"Agregar al carrito"}
                         }
                     }
                 }
             }
+        }
+        div(class="my-4 d-flex align-items-center justify-content-center gap-2")
+        {
+            form(action="." method="GET" id="form")
+            {
+                input(type="hidden" name="x" value="#<@@(get,'x')>")
+                input(type="hidden" name="v" value="#<@@(get,'v')>")
+                input(type="hidden" name="q" value="#<@@(get,'q')>")
+
+                div(class="btn-group btn-group-sm" role="group")
+                {
+                    input(type="radio" class="btn-check" name="p" id="rad_p1" autocomplete="off" value="#<firs_page>" "#<ifstr(firs_page == -99, 'disabled', '')>"="")
+                    label(class="btn btn-outline-secondary" "for"="rad_p1"){$"Inicio"}
+
+                    input(type="radio" class="btn-check" name="p" id="rad_p2" autocomplete="off" value="#<back_page>" "#<ifstr(back_page == -99, 'disabled', '')>"="")
+                    label(class="btn btn-outline-secondary" "for"="rad_p2"){$"Atrás"}
+
+                    div(class="border px-2")
+                    {
+                        small{ $"Página: #<curr_page> / #<ifstr(last_page == -99, curr_page, last_page)>"}
+                    }
+
+                    input(type="radio" class="btn-check" name="p" id="rad_p3" autocomplete="off" value="#<next_page>" "#<ifstr(next_page == -99, 'disabled', '')>"="")
+                    label(class="btn btn-outline-secondary" "for"="rad_p3"){$"Siguiente"}
+
+                    input(type="radio" class="btn-check" name="p" id="rad_p4" autocomplete="off" value="#<last_page>" "#<ifstr(last_page == -99, 'disabled', '')>"="")
+                    label(class="btn btn-outline-secondary" "for"="rad_p4"){$"Final"}
+                }
+            }
+            script{$'
+                const form = document.querySelector("#form")
+                document.querySelectorAll(".btn-check").forEach(btn => {
+                    btn.addEventListener("change", () => form.submit());
+                });
+            '}
         }
     }
 }

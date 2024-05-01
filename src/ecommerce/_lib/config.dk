@@ -10,6 +10,8 @@ module
 	@url_pwd_chq_apply = "/-/pwd-chq-apply/"
 	@url_address = "/-/address/"
 
+	@url_images = "" // establecer url completa del servicio. Ej: http://v12_site:8080/!/prodserv/galeria/@sku/
+
 	@req_pwd_max_days = 7	// Vigencia en días de una solicitud de cambio de contraseña
 
 	// Envio de correos
