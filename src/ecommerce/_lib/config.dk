@@ -9,6 +9,7 @@ module
 	@url_pwd_chg_req = "/-/pwd-chg-req/"
 	@url_pwd_chq_apply = "/-/pwd-chq-apply/"
 	@url_address = "/-/address/"
+	@url_search = "/-/r/"
 
 	@url_images = "" // establecer url completa del servicio. Ej: http://v12_site:8080/!/prodserv/galeria/@sku/
 

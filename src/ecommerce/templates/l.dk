@@ -1,0 +1,39 @@
+#include "dkli.dkh"
+#!
+module "Lines"
+{
+    ref db = get_database()
+    ref lines = dbr.list(db, "SELECT sys_pk, codigo, descripcion FROM linea ORDER BY descripcion;", @null)
+
+    #$ div(class="container-sm p-5 bg-white mt-4")
+    {
+        div(class="mb-4")
+        {
+            h3{$"Líneas"}
+        }
+        div(class="row")
+        {
+            $""
+            #! go foreach.lobj(index:i, value:line) with(lines)
+            {
+                #$ div(class="col-lg-4 col-sm-6 mb-4")
+                {
+                    div(class="px-3 pb-5 pt-4 text-center h-100" style="background-color: #f5f5f5;")
+                    {
+                        a(href="#<@url_search>?x=linea&v=#<@@(line,'sys_pk')>" class="text-decoration-none text-dark")
+                        {
+                            div
+                            {
+                                img(src="" onerror="this.src='/$/img/icons/default_product.png'" loading="lazy" style="height: 9rem; width: 9rem; object-fit: contain;" class="mb-3"){$""}
+                            }
+                            div
+                            {
+                                h6{$"#<@@(line,'$descripcion')>"}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

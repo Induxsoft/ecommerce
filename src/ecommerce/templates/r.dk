@@ -19,9 +19,21 @@ module "General search"
 		@"v": @@(get,"#v")  //clave primaria del elemento x
 		@"q": @@(get,"$q")  //cadena de filtro like, si se omite se asume %
 		@"p": @@(get,"#p")  //número de página a mostrar (si se omite, se asume 1)
+        @"s": @@(get,"$s")  //ordenación (mp = mayor precio, bp = menor precio, k = por código, kd = código descendente,...)
 	}
 
     limit = str((prodsxp * @@(filters,"#p")) - prodsxp) + "," + str(prodsxp)
+    order = "prod.descripcion ASC"
+
+    switch @@(filters,"$s")
+    {
+        case "az" { order = "prod.descripcion ASC" }
+        case "za" { order = "prod.descripcion DESC" }
+        case "bp" { order = "prod.costoultimo ASC" }
+        case "mp" { order = "prod.costoultimo DESC" }
+        case "k" { order = "prod.codigo ASC" }
+        case "kd" { order = "prod.codigo DESC" }
+    }
     
     sql = "
         SELECT prod.sys_pk, prod.codigo, prod.descripcion, prod.costoultimo,
@@ -30,7 +42,9 @@ module "General search"
             LEFT JOIN linea lin ON prod.ilinea = lin.sys_pk
             LEFT JOIN marca mar ON prod.imarca = mar.sys_pk
             LEFT JOIN departamento dep ON prod.idepartamento = dep.sys_pk
-        WHERE IF(IFNULL(@q,'%') = '%', true, prod.codigo LIKE CONCAT('%',@q,'%') || prod.descripcion LIKE CONCAT('%',@q,'%'))
+        WHERE IFNULL(prod.sys_info, '') <> 'hidden'
+            AND IFNULL(prod.sys_deleted, 0) = 0
+            AND IF(IFNULL(@q,'%') = '%', true, prod.codigo LIKE CONCAT('%',@q,'%') || prod.descripcion LIKE CONCAT('%',@q,'%'))
             AND IF(IFNULL(@x,'') = '', 
                 true,
                 CASE
@@ -40,6 +54,7 @@ module "General search"
                     ELSE true
                 END
             )
+        ORDER BY #<order>
         LIMIT #<limit>;
     "
     //do rise_error(0, ftext(sql))
@@ -108,9 +123,33 @@ module "General search"
 
     #$ div(class="container-sm p-5 bg-white mt-4")
     {
+        div(class="mb-4 d-flex flex-wrap")
+        {
+            h3(class="m-0 flex-grow-1"){$"Productos"}
+            form(action="." method="GET" id="form1")
+            {
+                input(type="hidden" name="x" value="#<@@(get,'x')>")
+                input(type="hidden" name="v" value="#<@@(get,'v')>")
+                input(type="hidden" name="q" value="#<@@(get,'q')>")
+                input(type="hidden" name="s" value="#<@@(get,'s')>")
+
+                select(name="s" class="form-select form-select-sm shadow-none" id="sel_sort")
+                {
+                    option(value="az" "#<ifstr(@@(get,'$s')=='az','selected','')>"=""){ $"Nombre A-Z" }
+                    option(value="za" "#<ifstr(@@(get,'$s')=='za','selected','')>"=""){ $"Nombre alfabeto inverso Z-A" }
+                    option(value="bp" "#<ifstr(@@(get,'$s')=='bp','selected','')>"=""){ $"Menor precio &#8595;$" }
+                    option(value="mp" "#<ifstr(@@(get,'$s')=='mp','selected','')>"=""){ $"Mayor precio &#8593;$" }
+                    option(value="k" "#<ifstr(@@(get,'$s')=='k','selected','')>"=""){ $"Código A-Z" }
+                    option(value="kd" "#<ifstr(@@(get,'$s')=='kd','selected','')>"=""){ $"Código alfabeto inverso Z-A" }
+                }
+            }
+        }
         div(class="row")
         {
-            $""
+            #! if list.count(products) < 1
+            {
+                #$ div(class="text-center"){ h6(class="text-secondary"){ $"Sin resultados"} }
+            }
             #! go foreach.lobj(index:i, value:product) with(products)
             {
                 #$ div(class="col-lg-4 col-sm-6 mb-4")
@@ -124,8 +163,9 @@ module "General search"
                         div
                         {
                             img(src="#<@@(product,'$url_img')>" onerror="this.src='/$/img/icons/default_product.png'" loading="lazy" style="height: 9rem; width: 9rem; object-fit: contain;" class="mb-3")
-                            h6(class="mb-3"){$"#<@@(product,'$descripcion')>"}
-                            div(class="mb-3")
+                            h6(class="m-0"){$"#<@@(product,'$descripcion')>"}
+                            small(class="text-secondary"){$"#<@@(product,'$codigo')>"}
+                            div(class="my-3")
                             {
                                 h6{$"$#<format(@@(product,'#costoultimo'),'#,###.00')>"}
                             }
@@ -140,15 +180,16 @@ module "General search"
         }
         div(class="my-4 d-flex align-items-center justify-content-center gap-2")
         {
-            form(action="." method="GET" id="form")
+            form(action="." method="GET" id="form2")
             {
                 input(type="hidden" name="x" value="#<@@(get,'x')>")
                 input(type="hidden" name="v" value="#<@@(get,'v')>")
                 input(type="hidden" name="q" value="#<@@(get,'q')>")
+                input(type="hidden" name="s" value="#<@@(get,'s')>")
 
                 div(class="btn-group btn-group-sm" role="group")
                 {
-                    input(type="radio" class="btn-check" name="p" id="rad_p1" autocomplete="off" value="#<firs_page>" "#<ifstr(firs_page == -99, 'disabled', '')>"="")
+                    input(type="radio" class="btn-check" name="p" id="rad_p1" autocomplete="off" value="#<firs_page>" "#<ifstr(curr_page <= 1, 'disabled', '')>"="")
                     label(class="btn btn-outline-secondary" "for"="rad_p1"){$"Inicio"}
 
                     input(type="radio" class="btn-check" name="p" id="rad_p2" autocomplete="off" value="#<back_page>" "#<ifstr(back_page == -99, 'disabled', '')>"="")
@@ -167,10 +208,13 @@ module "General search"
                 }
             }
             script{$'
-                const form = document.querySelector("#form")
+                const form1 = document.querySelector("#form1");
+                const form2 = document.querySelector("#form2");
+
                 document.querySelectorAll(".btn-check").forEach(btn => {
-                    btn.addEventListener("change", () => form.submit());
+                    btn.addEventListener("change", () => form2.submit());
                 });
+                document.querySelector("#sel_sort").addEventListener("change", () => form1.submit());
             '}
         }
     }
