@@ -1,0 +1,22 @@
+[
+    {
+        "id": "ecommerce",
+        "caption": "Sitio de comercio electrónico",
+        "help": "Configuraciones",
+        "vars": 
+        [
+            {
+                "varname": "ecommerce_backoffice_site",
+                "vardefault": "",
+                "varvalue": "",
+                "varcaption": "URL del sitio v12",
+                "varhelp": "URL del sitio backoffice de v12, ejemplo: http://misitiov12:80 (por lo regular es el sitio en el que se encuentra actualmente)",
+                "vartype": "string",
+                "varinput": 
+                {
+                    "control": "text"
+                }
+            }
+        ]
+    }
+]

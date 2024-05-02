@@ -4,6 +4,8 @@ module "General search"
 {
     #include "webcl.dkh"
     #include "dbr.vars.dkl"
+    #include "prodserv/galeria/controller.dk"
+    #include "prodserv/galeria/model.dk"
 
     ref _db = get_database()
     ref get = @@(@http_context,"&request/get")
@@ -63,14 +65,20 @@ module "General search"
     // =============== IMAGENES DE PRODUCTOS
 
     mobile_device = contains(tolower(@@(@http_context,"request/headers/HTTP_USER_AGENT")),"mobile")
+    ref heads_v12 = url_to_headers(dbr.vars.get(_db, "ecommerce_backoffice_site"))
 
     go foreach.lobj(index:i, value:product) with(products)
     {
-        endpoint = @url_images
-        endpoint = replace(endpoint, "@sku", @@(product,"codigo")) //+ "?ids=" + @@(@http_context,"session/user/ids")
-        response = http.request(endpoint, "GET", @null, '')
-        ref data = ifnull(from.json(response), list.create())
-        
+        new _get { @"sku": @@(product, "codigo") }
+        new info_domain 
+        {
+            @"get*": _get
+            @"headers*": heads_v12
+        }
+        @cross_domain = info_domain
+        do set_paths()
+        ref data = magick.get(_db, _get)
+
         if list.count(data) > 0
         {
             ref first_image = list.obj(data, 0)
@@ -160,7 +168,7 @@ module "General search"
                         {
                             button(class="btn btn-sm shadow-none"){$"#<@ICON_HEART_24>"}
                         }
-                        div
+                        a(href="#<@url_product>?p=#<@@(product,'sys_pk')>" class="text-decoration-none text-dark")
                         {
                             img(src="#<@@(product,'$url_img')>" onerror="this.src='/$/img/icons/default_product.png'" loading="lazy" style="height: 9rem; width: 9rem; object-fit: contain;" class="mb-3")
                             h6(class="m-0"){$"#<@@(product,'$descripcion')>"}
@@ -191,18 +199,11 @@ module "General search"
                 {
                     input(type="radio" class="btn-check" name="p" id="rad_p1" autocomplete="off" value="#<firs_page>" "#<ifstr(curr_page <= 1, 'disabled', '')>"="")
                     label(class="btn btn-outline-secondary" "for"="rad_p1"){$"Inicio"}
-
                     input(type="radio" class="btn-check" name="p" id="rad_p2" autocomplete="off" value="#<back_page>" "#<ifstr(back_page == -99, 'disabled', '')>"="")
                     label(class="btn btn-outline-secondary" "for"="rad_p2"){$"Atrás"}
-
-                    div(class="border px-2")
-                    {
-                        small{ $"Página: #<curr_page> / #<ifstr(last_page == -99, curr_page, last_page)>"}
-                    }
-
+                    div(class="border px-2") { small{ $"Página: #<curr_page> / #<ifstr(last_page == -99, curr_page, last_page)>"} }
                     input(type="radio" class="btn-check" name="p" id="rad_p3" autocomplete="off" value="#<next_page>" "#<ifstr(next_page == -99, 'disabled', '')>"="")
                     label(class="btn btn-outline-secondary" "for"="rad_p3"){$"Siguiente"}
-
                     input(type="radio" class="btn-check" name="p" id="rad_p4" autocomplete="off" value="#<last_page>" "#<ifstr(last_page == -99, 'disabled', '')>"="")
                     label(class="btn btn-outline-secondary" "for"="rad_p4"){$"Final"}
                 }

@@ -50,4 +50,16 @@ module "lib"
         return url
         exception { do rise_error(0, "Error al parsear la url") }
     }
+    url_to_headers::url
+    {
+        ref headers = record.create()
+        base = replace(list.str(split(url,"?"),0), "/","")
+        ref parts = split(base,":")
+        headers<"HTTPS">: (list.str(parts,0) == "https")
+        headers<"HTTP_HOST">: list.str(parts,1)
+        if list.count(parts) > 2 {
+            headers<"SERVER_PORT">: list.str(parts,2)
+        }
+        return headers
+    }
 }
