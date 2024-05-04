@@ -160,6 +160,8 @@ module "General search"
             }
             #! go foreach.lobj(index:i, value:product) with(products)
             {
+                url_sku = get_url_ecommerce(@url_product, @@(product,'sys_pk'), @@(product,'descripcion'))
+
                 #$ div(class="col-lg-4 col-sm-6 mb-4")
                 {
                     div(class="px-3 pb-5 pt-4 text-center h-100 border" style="background-color: #FFF;")
@@ -168,7 +170,7 @@ module "General search"
                         {
                             button(class="btn btn-sm shadow-none"){$"#<@ICON_HEART_24>"}
                         }
-                        a(href="#<@url_product>?p=#<@@(product,'sys_pk')>" class="text-decoration-none text-dark")
+                        a(href="#<url_sku>" class="text-decoration-none text-dark")
                         {
                             img(src="#<@@(product,'$url_img')>" onerror="this.src='/$/img/icons/default_product.png'" loading="lazy" style="height: 9rem; width: 9rem; object-fit: contain;" class="mb-3")
                             h6(class="m-0"){$"#<@@(product,'$descripcion')>"}

@@ -62,4 +62,36 @@ module "lib"
         }
         return headers
     }
+    get_url_ecommerce::url,entity_id,description
+    {
+        // estructura: --187-DESCRIPCION-DEL-PRODUCTO
+        desc = tolower(description)
+        desc = ranychars(desc, "?,&,/,=, ", "-")
+        //desc = replace(desc," ","-")
+        desc = replace(desc,",","")
+        desc = replace(desc,"'","")
+        desc = replace(desc,'"',"")
+        desc = replace(desc,"\\","")
+        desc = replace(desc,"á","a")
+        desc = replace(desc,"é","e")
+        desc = replace(desc,"í","i")
+        desc = replace(desc,"ó","o")
+        desc = replace(desc,"ú","u")
+
+        url = url + "--" + str(entity_id) + "-" + str(desc)
+        return url
+    }
+    get_entity_id::
+    {
+        _main_arg = @@(@http_context, "$request/get/_main_arg")
+        if _main_arg == "" { return -99 }
+        
+        if contains(_main_arg, "--") {
+            _main_arg = replace(_main_arg, "--", "")
+            if contains(_main_arg, "-") {
+                return parse.num(list.str(split(_main_arg,"-"),0))
+            }
+        }
+        exception { return -99 }
+    }
 }

@@ -2,19 +2,67 @@
 #!
 module "Product page"
 {
+    #include "dbr.vars.dkl"
+    #include "prodserv/galeria/controller.dk"
+    #include "prodserv/galeria/model.dk"
+
     ref _db = get_database()
-    ref get = @@(@http_context, "&request/get")
-    ref product = dbr.rec(_db, "SELECT * FROM producto WHERE sys_pk = @p", get)
+    new prm { @"pk": get_entity_id() }
+    ref product = dbr.rec(_db, "SELECT * FROM producto WHERE sys_pk = @pk", prm)
+
+    // IMAGE
+    mobile_device = contains(tolower(@@(@http_context,"request/headers/HTTP_USER_AGENT")),"mobile")
+    ref heads_v12 = url_to_headers(dbr.vars.get(_db, "ecommerce_backoffice_site"))
+    
+    new _get { @"sku": @@(product, "codigo") }
+    new info_domain 
+    {
+        @"get*": _get
+        @"headers*": heads_v12
+    }
+    @cross_domain = info_domain
+    do set_paths()
+    
+    ref img_data = magick.get(_db, _get)
+
+    ref first_image = list.obj(img_data, 0)
+    ref variations = @@(first_image, "&variations")
+
+    product<"url_img">: @@(first_image, "src")
+
+    if not(mobile_device)
+    {
+        for z = 0; z < list.count(variations)
+        {
+            ref img = list.obj(variations, z)
+            if @@(img, "#width") == 640 { product<"url_img">: @@(img, "src") }
+        }
+    }
+    else 
+    {
+        for z = 0; z < list.count(variations)
+        {
+            ref img = list.obj(variations, z)
+            if @@(img, "#width") == 320 { product<"url_img">: @@(img, "src") }
+        }
+    }
+
 
     #$ div(class="container-sm p-5 bg-white mt-4")
     {
-        div(class="mb-4 d-flex flex-wrap")
+        div(class="mb-4 row p-0 m-0")
         {
-            h3(class="m-0 flex-grow-1"){$"Producto"}
-        }
-        div(class="p-4")
-        {
-            $"#<to.json(product)>"
+            div(class="col-sm-6 p-2 d-flex align-items-center justify-content-center border")
+            {
+                div(style="width:80%;height: 80%;")
+                {
+                    img(src="#<@@(product,'$url_img')>" onerror="this.src='/$/img/icons/default_product.png'" class="w-100 h-100" style="object-fit: contain;" )
+                }
+            }
+            div(class="col-sm-6 p-4")
+            {
+                h3{$"#<@@(product,'descripcion')>"}
+            }
         }
     }
 }
