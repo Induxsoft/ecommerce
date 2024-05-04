@@ -8,7 +8,16 @@ module "Product page"
 
     ref _db = get_database()
     new prm { @"pk": get_entity_id() }
-    ref product = dbr.rec(_db, "SELECT * FROM producto WHERE sys_pk = @pk", prm)
+    sql_products = "
+        SELECT p.sys_pk, p.codigo, p.descripcion, p.costoultimo, l.descripcion linea, IFNULL(m.descripcion,'') marca, 
+            IFNULL(d.descripcion,'') departamento
+        FROM producto p
+            INNER JOIN linea l ON p.ilinea = l.sys_pk
+            LEFT JOIN marca m ON p.imarca = m.sys_pk
+            LEFT JOIN departamento d ON p.idepartamento = d.sys_pk
+        WHERE p.sys_pk = @pk;
+    "
+    ref product = dbr.rec(_db, sql_products, prm)
 
     // IMAGE
     mobile_device = contains(tolower(@@(@http_context,"request/headers/HTTP_USER_AGENT")),"mobile")
@@ -61,7 +70,37 @@ module "Product page"
             }
             div(class="col-sm-6 p-4")
             {
-                h3{$"#<@@(product,'descripcion')>"}
+                div(class="border-bottom pb-4")
+                {
+                    div(class="mb-5")
+                    {
+                        h3{$"#<@@(product,'descripcion')>"}
+                        h4{$"$#<format(@@(product,'#costoultimo'),'#,###.00')>"}
+                    }
+                    div(class="d-flex gap-1")
+                    {
+                        div(class="btn-group btn-group-sm" role="group")
+                        {
+                            button(type="button" class="btn border text-secondary fw-bold"){$"-"}
+                            div(class="px-2 border-top border-bottom d-flex align-items-center"){ small(class=""){$"1"} }
+                            button(type="button" class="btn border text-secondary fw-bold"){$"+"}
+                        }
+                        button(class="btn btn-sm button_forms d-flex align-items-center gap-2") {
+                            $"#<@ICON_CART4>"
+                            $"Agregar al carrito"
+                        }
+                        button(class="btn btn-sm shadow-none border-secondary" title="Agregar a favoritos") {
+                            $"#<@ICON_HEART>"
+                        }
+                    }
+                }
+                div(class="pt-4")
+                {
+                    p(class="text-secondary mb-2"){$"SKU: #<@@(product,'codigo')>"}
+                    p(class="text-secondary mb-2"){$"Línea: #<@@(product,'linea')>"}
+                    p(class="text-secondary mb-2"){$"Marca: #<@@(product,'marca')>"}
+                    p(class="text-secondary mb-2"){$"Departamento: #<@@(product,'departamento')>"}
+                }
             }
         }
     }
