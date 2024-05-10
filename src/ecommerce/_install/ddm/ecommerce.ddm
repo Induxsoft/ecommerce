@@ -71,4 +71,51 @@ model ""
             field "label"
         }
     }
+
+
+    entity "tuser" :"TableModel"{}
+    entity "producto" :"TableModel"{}
+    entity "venta" :"TableModel"{}
+    entity "cliente" :"TableModel"{}
+    entity "ecomm_cart_status" :"EnumModel"
+    {
+        /*
+        0-Abierto
+        1-Cerrado
+        99-Cancelado
+        */
+    }
+
+    entity "ecomm_cart_fpago" :"EnumModel"
+    {
+        /*
+        0-Pendiente
+        1-On line
+        2-A la entrega
+        3-Crédito de cliente
+        */
+    }
+
+    entity "ecomm_cart" : "TableModel"
+    {
+        @"ref_user" ref:"tuser"
+        @"ref_cliente" ref:"cliente"
+        @"status" ref:"ecomm_cart_status" required
+        @"pedido" ref:"venta" unique
+        @"fpago" ref: "ecomm_cart_fpago"
+    }
+
+    entity "ecomm_cart_det" : "TableModel"
+    {
+        @"ref_cart" ref:"ecomm_cart" required
+        @"ref_prdo" ref:"producto" required
+        @"cantidad" decimal(12,4) required
+        @"unidad" string(15) required
+        @"precio" decimal(12,4) required
+        @"numprecio" int required // Número de precio que se usó
+        @"descuentos" decimal(12,4)
+        @"impuestos" decimal(12,4)
+        @"notas" memo
+        @"cupon" string(45) // Código de descuento aplicado
+    }
 }
