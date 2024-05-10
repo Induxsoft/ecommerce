@@ -16,6 +16,24 @@
                 {
                     "control": "text"
                 }
+            },
+            {
+                "varname": "ecommerce_cc",
+                "vardefault": "",
+                "varvalue": "",
+                "varcaption": "Centro de consumo",
+                "varhelp": "Centro de consumo para las operaciones del ecommerce",
+                "vartype": "string",
+                "varinput": 
+                {
+                    "control": "select",
+                    "source": {
+                        "type":"query",
+                        "query":"SELECT sys_pk, descripcion FROM cconsumo WHERE IFNULL(sys_deleted,0) = 0;",
+                        "showfield":"descripcion",
+                        "keyfield":"sys_pk"
+                    }
+                }
             }
         ]
     }

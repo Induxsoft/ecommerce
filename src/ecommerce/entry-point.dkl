@@ -54,6 +54,8 @@ module "Controller configs"
 
     ref confg = get_site_config()
 	def_tmplt = @@(confg,"$default_page_template")
+
+	@http_context<"cconsumo_price">: @@(confg,"$cconsumo_price")
 	
 	search_template::def_tmplt
 	{

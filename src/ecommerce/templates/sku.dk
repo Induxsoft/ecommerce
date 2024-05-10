@@ -5,11 +5,19 @@ module "Product page"
     #include "dbr.vars.dkl"
     #include "prodserv/galeria/controller.dk"
     #include "prodserv/galeria/model.dk"
+    #include "../_lib/precios.dkl"
 
     ref _db = get_database()
     new prm { @"pk": get_entity_id() }
     sql_products = "
-        SELECT p.sys_pk, p.codigo, p.descripcion, p.costoultimo, l.descripcion linea, IFNULL(m.descripcion,'') marca, 
+        SELECT p.sys_pk, p.codigo, p.descripcion, p.costoultimo, p.impuestos,
+            IFNULL(p.precio1,0) precio1, IFNULL(p.precio2,0) precio2, IFNULL(p.precio3,0) precio3, IFNULL(p.precio4,0) precio4,
+            IFNULL(p.precio5,0) precio5, IFNULL(p.precio106,0) precio106, IFNULL(p.precio107,0) precio107, IFNULL(p.precio108,0) precio108,
+            IFNULL(p.precio109,0) precio109, IFNULL(p.precio110,0) precio110, IFNULL(p.precio111,0) precio111, IFNULL(p.precio112,0) precio112,
+            IFNULL(p.precio113,0) precio113, IFNULL(p.precio114,0) precio114, IFNULL(p.precio115,0) precio115, IFNULL(p.precio116,0) precio116,
+            IFNULL(p.precio117,0) precio117, IFNULL(p.precio118,0) precio118, IFNULL(p.precio119,0) precio119, IFNULL(p.precio120,0) precio120,
+            l.descripcion linea, 
+            IFNULL(m.descripcion,'') marca, 
             IFNULL(d.descripcion,'') departamento
         FROM producto p
             INNER JOIN linea l ON p.ilinea = l.sys_pk
@@ -56,6 +64,14 @@ module "Product page"
         }
     }
 
+    new priceparams
+    {
+        @"cantidad": 1
+        @"producto*": product
+        @"numero": getNumPrice(_db)
+    }
+
+    _price = getPrice(_db, priceparams)
 
     #$ div(class="container-sm p-5 bg-white mt-4")
     {
@@ -75,7 +91,7 @@ module "Product page"
                     div(class="mb-5")
                     {
                         h3{$"#<@@(product,'descripcion')>"}
-                        h4{$"$#<format(@@(product,'#costoultimo'),'#,###.00')>"}
+                        h4{$"$#<format(_price,'#,###.00')>"}
                     }
                     div(class="d-flex gap-1")
                     {
