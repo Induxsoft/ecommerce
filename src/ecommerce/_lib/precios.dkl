@@ -10,17 +10,21 @@ module "lib.precios"
 		ref prod = @@(params,"&producto")
 		numero_p = determinarNumPrecio(@@(params,"#numero"))
 
+		if not(field.exist(prod, "impuestos")){ do rise_error(0, "se esperaba el campo producto/impuesto") }
+		
 		precio = @@(prod, "#" + campoPrecioR5(numero_p))
-		ref rc = dbr.rec(db, "SELECT sys_pk, i1venta, i2venta, i3venta, i4venta FROM cfgimpuesto WHERE sys_pk=@impuestos LIMIT 1;", prod)
-
-		ref info_precio = cPrecioInfoEx(rc, cantidad, precio)
-		return @@(info_precio, "#precio_neto")
+		ref im = dbr.rec(db, "SELECT sys_pk, i1venta, i2venta, i3venta, i4venta FROM cfgimpuesto WHERE sys_pk=@impuestos LIMIT 1;", prod)
+		ref dt = cPrecioInfoEx(im, cantidad, precio)
+		
+		return @@(dt, "#precio_neto")
 	}
+
 	getNumPrice::&db
 	{
 		numprice = 0
 		// Si el usuario logeado es cliente tomar del cliente
 		ref client = getCurrentClient(db)
+	
 		if not(isnull(client))
 		{
 			numprice = @@(client,"#precio")
@@ -29,14 +33,12 @@ module "lib.precios"
 		{
 			ref prm = record.create()
 			// Tomar del centro de consumo configurado en el sitio o globalvar
-			if @@(@http_context, "$cconsumo_price") != "" {
-				prm<"cc">: @@(@http_context, "#cconsumo_price")
-			}
-			else {
-				prm<"cc">: dbr.vars.getd(db,"ecommerce_cc","-99")
-			}
+			if @@(@http_context, "$cconsumo_price") != "" { prm<"cc">: @@(@http_context, "#cconsumo_price") }
+			else { prm<"cc">: dbr.vars.getd(db,"ecommerce_cc","-99") }
+
 			numprice = dbr.num(db, "SELECT IFNULL(precio,0) FROM cconsumo WHERE sys_pk = @cc LIMIT 1;", prm)
 		}
+
 		if numprice == 0 { numprice = 1 }
 		return numprice
 	}
@@ -56,137 +58,26 @@ module "lib.precios"
 	// ------------------------------------------------------------------------------
 	#!
 	@DecimalesEnImportes=2 //Pendiente: Tomar este valor de la configuración 
-
-	//Todos los precios y los impuestos de la tabla de productos
-	@CamposDePrecios="p.sys_info info, ifnull(p.precio1,0) precio1,ifnull(p.precio2,0) precio2, ifnull(p.precio3,0) precio3, ifnull(p.precio4,0) precio4, ifnull(p.precio5,0) precio5,
-					  ifnull(p.precio106,0) precio106,ifnull(p.precio107,0) precio107,ifnull(p.precio108,0) precio108, ifnull(p.precio109,0) precio109, ifnull(p.precio110,0) precio110,
-					  ifnull(p.precio111,0) precio111,ifnull(p.precio112,0) precio112,ifnull(p.precio113,0) precio113,ifnull(p.precio114,0) precio114,ifnull(p.precio115,0) precio115,
-					  ifnull(p.precio116,0) precio116,ifnull(p.precio117,0) precio117,ifnull(p.precio118,0) precio118,ifnull(p.precio119,0) precio119,ifnull(p.precio120,0) precio120,
-					  imp.i1venta, imp.i2venta,imp.i3venta,imp.i4venta"
 	//////////////////////////////////////////////////////////////////////////////////
-	
-	#!
-	aplImpuestos:: p, i1, i2, i3, i4
-	{
-		p=round( p, @DecimalesEnImportes)
 
-		x=round( if(i1>0,(p*i1/100),0), @DecimalesEnImportes)
-		y=round( if(i2>0,(p*i2/100),0), @DecimalesEnImportes)
-
-		p=p+x+y
-
-		x=round( if(i3>0,(p*i3/100),0), @DecimalesEnImportes)
-		y=round( if(i4>0,(p*i4/100),0), @DecimalesEnImportes)
-
-		p=p+x+y
-
-		return round(p, @DecimalesEnImportes)
-	}
-
-	#!
 	determinarNumPrecio::np
 	{
-		//np=field.dnum(@storeInfo,"pol_ppred",1) //Toma el número de precio de la 
-
-		if np<6 && np>0
-		{
-			return np
-		}
-
-		if np<1
-		{
-			return 1
-		}
-
-		if np>100
-		{
-			return np-100
-		}
-
+		if np<6 && np>0 { return np }
+		if np<1 { return 1 }
+		if np>100 { return np-100 }
 		return 1
 	}
 
-	#!
 	campoPrecioR5::np
 	{
-		if np>5
-		{
-			return "precio"+str(100+np)
-		}
-
-		return "precio"+str(np)
+		if np>5 { return "precio"+str(round(100+np,0)) }
+		return "precio"+str(round(np,0))
 	}
 
-	#!
-	// cPrecioInfo::&rec, cantidad, uid
-	// {
-	// 	return cPrecioInfoEx(rec, cantidad, uid,0)
-	// }
-
-	#!
 	cPrecioInfoEx::&rec, cantidad, precio
 	{
-		//Retorna @null si no se debe mostrar el precio
-		// if uid=="" && field.dnum(@storeInfo,"pol_mpre",0)>0
-		// {
-		// 	return @null
-		// }
-
 		zonaImpuesto=0 //0-Interior, 1-Frontera
-		///Pendiente implementar lógica de selección de precio
-
-		// numPrecio=determinarNumPrecio() //Tomar el número de precio previsto en la configuración
-		
-		
-		//Está un cliente autenticado????
-		// if field.dstr(@sessionInfo,"cliente_codigo","")!="" 
-		// {
-		// 	if not(field.dnum(@storeInfo,"pol_fpre",0))
-		// 	{
-		// 		np=field.dnum(@sessionInfo,"cliente_precio",1)
-
-		// 		if np!=6
-		// 		{
-		// 			if np<6 && np>0
-		// 			{
-		// 				numPrecio=np
-		// 			}
-		// 			else
-		// 			{
-		// 				if np>100
-		// 				{
-		// 					numPrecio=np-100
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-		// }
-		// else
-		// {
-		// 	if field.dnum(@storeInfo,"pol_mpre",0)==2
-		// 	{
-		// 		return @null
-		// 	}
-		// }
-
-
-		////////////
-
-		
 		importe_adicional=0
-
-		// if adicional>0
-		// {
-		// 	importe_adicional=desglosarImpuestos(adicional,parseImpuesto(field.dstr(rec,"i1venta",""),zonaImpuesto),parseImpuesto(field.dstr(rec,"i2venta",""),zonaImpuesto),parseImpuesto(field.dstr(rec,"i3venta",""),zonaImpuesto),parseImpuesto(field.dstr(rec,"i4venta",""),zonaImpuesto))
-		// 	precio=precio+importe_adicional
-		// }
-		// else if adicional<0
-		// {
-		// 	importe_adicional=abs(adicional)
-		// 	precio=precio+importe_adicional
-
-		// 	//do rise_error(0,str(importe_adicional)+ "|" + str(precio))
-		// }
 
 		//La lógica de descuentos no está implementada
 		p_descuento1=0 //Porcentajes de descuento aplicables
@@ -198,7 +89,6 @@ module "lib.precios"
 
 		new precioInfo
 		{
-			//@"num_precio": numPrecio
 			@"precio_unitario": precio
 			@"descuento1":desc1
 			@"descuento2":desc2
@@ -228,100 +118,13 @@ module "lib.precios"
 
 		return precioInfo
 	}
-	
 
-	#!
-	desglosarImpuestos::valor, pi1,pi2,pi3,pi4
-	{
-		d1=1+((pi3/100) + (pi4/100))
-		d2=1+((pi1/100) + (pi2/100))
-
-		return ((valor/d1)/d2)
-
-		exception 
-		{
-			return valor
-		}
-	}
-
-	#!
-	cPrecioInfoTachado::&rec, numerodeprecio
-	{	
-		if numerodeprecio == 0
-		{
-			return @null
-		}
-		
-		zonaImpuesto=0 //0-Interior, 1-Frontera
-		precio=field.num(rec,campoPrecioR5(numerodeprecio)) 
-		
-		//La lógica de descuentos no está implementada
-		p_descuento1=0 //Porcentajes de descuento aplicables
-		p_descuento2=0
-
-		desc1=0 //Importes totales a descontar con base en el porcentaje y la cantidad
-		desc2=0
-		///////////////////////////////////////////////////////////////////////////////
-		cantidad = 1
-		new precioInfo
-		{
-			@"num_precio": numerodeprecio
-			@"precio_unitario": precio
-			
-			i1=round( (round((precio*cantidad)-desc1-desc2,@DecimalesEnImportes) * parseImpuesto(field.dstr(rec,"i1venta",""),zonaImpuesto) /100),@DecimalesEnImportes)
-			
-			i2=round( (round((precio*cantidad)-desc1-desc2,@DecimalesEnImportes) * parseImpuesto(field.dstr(rec,"i2venta",""),zonaImpuesto) /100),@DecimalesEnImportes)
-
-			i3=round( (round((precio*cantidad)-desc1-desc2+i1+i2,@DecimalesEnImportes) * parseImpuesto(field.dstr(rec,"i3venta",""),zonaImpuesto) /100),@DecimalesEnImportes)
-			i4=round( (round((precio*cantidad)-desc1-desc2+i1+i2,@DecimalesEnImportes) * parseImpuesto(field.dstr(rec,"i4venta",""),zonaImpuesto) /100),@DecimalesEnImportes)
-
-			@"impuesto1":i1
-			@"impuesto2":i2
-			@"impuesto3":i3
-			@"impuesto4":i4
-
-			@"precio_neto": round(round((precio*cantidad)-desc1-desc2,@DecimalesEnImportes)+i1+i2+i3+i4,@DecimalesEnImportes)
-		}
-
-		return precioInfo
-	}
-
-	#!
-	cprecio::&rec
-	{
-
-		ref pinfo=cPrecioInfo(rec,1, "")
-
-		return field.num(pinfo,"precio_neto")
-		/*
-		zonaImpuesto=0 //0-Interior, 1-Frontera
-		precio=field.num(rec,"precio1") //El número de precio debería corresponder con el que tiene asignado el cliente en caso de estar autenticado
-
-		i1=parseImpuesto(field.dstr(rec,"i1venta",""),zonaImpuesto)
-		i2=parseImpuesto(field.dstr(rec,"i2venta",""),zonaImpuesto)
-		i3=parseImpuesto(field.dstr(rec,"i3venta",""),zonaImpuesto)
-		i4=parseImpuesto(field.dstr(rec,"i4venta",""),zonaImpuesto)
-
-		return aplImpuestos(precio,i1,i2,i3,i4)
-		*/
-
-	}
-
-	#!
 	parseImpuesto:: cad, zona
 	{
-		if trim(cad)==""
-		{
-			return 0
-		}
-
+		if trim(cad)=="" { return 0 }
 		ref l=split(cad,"|")
-
 		return val(replace(list.str(l,zona),"%",""))
 
-		exception
-		{
-			return 0
-		}
+		exception { return 0 }
 	}
 }

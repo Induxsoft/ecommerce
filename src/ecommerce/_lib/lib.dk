@@ -66,7 +66,7 @@ module "lib"
     {
         // estructura: --187-DESCRIPCION-DEL-PRODUCTO
         desc = tolower(description)
-        desc = ranychars(desc, "?,&,/,=, ", "-")
+        desc = ranychars(desc, "?,&,/,=,., ", "-")
         //desc = replace(desc," ","-")
         desc = replace(desc,",","")
         desc = replace(desc,"'","")
@@ -93,5 +93,45 @@ module "lib"
             }
         }
         exception { return -99 }
+    }
+    get_img_data::&db,&product,&heads_v12
+    {
+        new _get { @"sku": @@(product, "codigo") }
+        new info_domain 
+        {
+            @"get*": _get
+            @"headers*": heads_v12
+        }
+        @cross_domain = info_domain
+        do set_paths()
+        return magick.get(db, _get)
+    }
+    get_img_from_data::&data
+    {
+        if list.count(data) < 1 { return "" }
+
+        mobile_device = contains(tolower(@@(@http_context,"request/headers/HTTP_USER_AGENT")),"mobile")
+        ref first_image = list.obj(data, 0)
+        ref variations = @@(first_image, "&variations")
+
+        _img = @@(first_image, "src")
+
+        if not(mobile_device)
+        {
+            for z = 0; z < list.count(variations)
+            {
+                ref img = list.obj(variations, z)
+                if @@(img, "#width") == 640 { _img = @@(img, "src") }
+            }
+        }
+        else 
+        {
+            for z = 0; z < list.count(variations)
+            {
+                ref img = list.obj(variations, z)
+                if @@(img, "#width") == 320 { _img = @@(img, "src") }
+            }
+        }
+        return _img
     }
 }

@@ -6,10 +6,11 @@ module "General search"
     #include "dbr.vars.dkl"
     #include "prodserv/galeria/controller.dk"
     #include "prodserv/galeria/model.dk"
+    #include "../_lib/precios.dkl"
 
     ref _db = get_database()
     ref get = @@(@http_context,"&request/get")
-    prodsxp = 20 // productos por página
+    prodsxp = 20    // productos por página
 
     // =============== BÚSQUEDA DE PRODUCTOS
 
@@ -38,7 +39,12 @@ module "General search"
     }
     
     sql = "
-        SELECT prod.sys_pk, prod.codigo, prod.descripcion, prod.costoultimo,
+        SELECT prod.sys_pk, prod.codigo, prod.descripcion, prod.costoultimo, prod.impuestos,
+            IFNULL(prod.precio1,0) precio1, IFNULL(prod.precio2,0) precio2, IFNULL(prod.precio3,0) precio3, IFNULL(prod.precio4,0) precio4,
+            IFNULL(prod.precio5,0) precio5, IFNULL(prod.precio106,0) precio106, IFNULL(prod.precio107,0) precio107, IFNULL(prod.precio108,0) precio108,
+            IFNULL(prod.precio109,0) precio109, IFNULL(prod.precio110,0) precio110, IFNULL(prod.precio111,0) precio111, IFNULL(prod.precio112,0) precio112,
+            IFNULL(prod.precio113,0) precio113, IFNULL(prod.precio114,0) precio114, IFNULL(prod.precio115,0) precio115, IFNULL(prod.precio116,0) precio116,
+            IFNULL(prod.precio117,0) precio117, IFNULL(prod.precio118,0) precio118, IFNULL(prod.precio119,0) precio119, IFNULL(prod.precio120,0) precio120,
             IFNULL(lin.descripcion,'') linea, IFNULL(mar.descripcion,'') marca, IFNULL(dep.descripcion,'') departamento
         FROM producto prod
             LEFT JOIN linea lin ON prod.ilinea = lin.sys_pk
@@ -59,50 +65,25 @@ module "General search"
         ORDER BY #<order>
         LIMIT #<limit>;
     "
-    //do rise_error(0, ftext(sql))
     ref products = dbr.list(_db, ftext(sql), filters)
 
     // =============== IMAGENES DE PRODUCTOS
 
-    mobile_device = contains(tolower(@@(@http_context,"request/headers/HTTP_USER_AGENT")),"mobile")
     ref heads_v12 = url_to_headers(dbr.vars.get(_db, "ecommerce_backoffice_site"))
+    number_price = getNumPrice(_db)
 
     go foreach.lobj(index:i, value:product) with(products)
     {
-        new _get { @"sku": @@(product, "codigo") }
-        new info_domain 
-        {
-            @"get*": _get
-            @"headers*": heads_v12
+        ref img_data = get_img_data(_db, product, heads_v12)
+        product<"url_img">: get_img_from_data(img_data)
+
+        // PRICE
+        new priceparams {
+            @"cantidad": 1
+            @"producto*": product
+            @"numero": number_price
         }
-        @cross_domain = info_domain
-        do set_paths()
-        ref data = magick.get(_db, _get)
-
-        if list.count(data) > 0
-        {
-            ref first_image = list.obj(data, 0)
-            ref variations = @@(first_image, "&variations")
-
-            product<"url_img">: @@(first_image, "src")
-
-            if not(mobile_device)
-            {
-                for z = 0; z < list.count(variations)
-                {
-                    ref img = list.obj(variations, z)
-                    if @@(img, "#width") == 640 { product<"url_img">: @@(img, "src") }
-                }
-            }
-            else 
-            {
-                for z = 0; z < list.count(variations)
-                {
-                    ref img = list.obj(variations, z)
-                    if @@(img, "#width") == 320 { product<"url_img">: @@(img, "src") }
-                }
-            }
-        }
+        product<"_price">: getPrice(_db, priceparams)
     }
 
     // =============== PAGINACIÓN
@@ -116,16 +97,11 @@ module "General search"
     limit = "1000"
     total_lst = list.count(dbr.list(_db, ftext(sql), filters))
 
-    if curr_page > 1 {
-        back_page = curr_page - 1
-    }
-    if total_lst > (((curr_page - 1) * prodsxp) + list.count(products)){
-        next_page = curr_page + 1
-    }
+    if curr_page > 1 { back_page = curr_page - 1 }
+    if total_lst > (((curr_page - 1) * prodsxp) + list.count(products)){ next_page = curr_page + 1 }
     if next_page != -99 {
         last_page = trun(div(total_lst, prodsxp))
-        resi = mod(total_lst, prodsxp)
-        if resi > 0 { last_page = last_page + 1 }
+        if mod(total_lst, prodsxp) > 0 { last_page = last_page + 1 }
     }
 
 
@@ -177,7 +153,7 @@ module "General search"
                             small(class="text-secondary"){$"#<@@(product,'$codigo')>"}
                             div(class="my-3")
                             {
-                                h6{$"$#<format(@@(product,'#costoultimo'),'#,###.00')>"}
+                                h6{$"$#<format(@@(product,'#_price'),'#,###.00')>"}
                             }
                         }
                         div

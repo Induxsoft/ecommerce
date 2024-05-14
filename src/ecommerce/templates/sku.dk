@@ -9,7 +9,7 @@ module "Product page"
 
     ref _db = get_database()
     new prm { @"pk": get_entity_id() }
-    sql_products = "
+    sql_prod = "
         SELECT p.sys_pk, p.codigo, p.descripcion, p.costoultimo, p.impuestos,
             IFNULL(p.precio1,0) precio1, IFNULL(p.precio2,0) precio2, IFNULL(p.precio3,0) precio3, IFNULL(p.precio4,0) precio4,
             IFNULL(p.precio5,0) precio5, IFNULL(p.precio106,0) precio106, IFNULL(p.precio107,0) precio107, IFNULL(p.precio108,0) precio108,
@@ -25,52 +25,20 @@ module "Product page"
             LEFT JOIN departamento d ON p.idepartamento = d.sys_pk
         WHERE p.sys_pk = @pk;
     "
-    ref product = dbr.rec(_db, sql_products, prm)
+    ref product = dbr.rec(_db, sql_prod, prm)
 
     // IMAGE
-    mobile_device = contains(tolower(@@(@http_context,"request/headers/HTTP_USER_AGENT")),"mobile")
     ref heads_v12 = url_to_headers(dbr.vars.get(_db, "ecommerce_backoffice_site"))
-    
-    new _get { @"sku": @@(product, "codigo") }
-    new info_domain 
-    {
-        @"get*": _get
-        @"headers*": heads_v12
-    }
-    @cross_domain = info_domain
-    do set_paths()
-    
-    ref img_data = magick.get(_db, _get)
+    ref img_data = get_img_data(_db, product, heads_v12)
+    product<"url_img">: get_img_from_data(img_data)
 
-    ref first_image = list.obj(img_data, 0)
-    ref variations = @@(first_image, "&variations")
-
-    product<"url_img">: @@(first_image, "src")
-
-    if not(mobile_device)
-    {
-        for z = 0; z < list.count(variations)
-        {
-            ref img = list.obj(variations, z)
-            if @@(img, "#width") == 640 { product<"url_img">: @@(img, "src") }
-        }
-    }
-    else 
-    {
-        for z = 0; z < list.count(variations)
-        {
-            ref img = list.obj(variations, z)
-            if @@(img, "#width") == 320 { product<"url_img">: @@(img, "src") }
-        }
-    }
-
-    new priceparams
+    // PRICE
+    new priceparams 
     {
         @"cantidad": 1
         @"producto*": product
         @"numero": getNumPrice(_db)
     }
-
     _price = getPrice(_db, priceparams)
 
     #$ div(class="container-sm p-5 bg-white mt-4")

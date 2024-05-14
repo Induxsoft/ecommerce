@@ -49,6 +49,7 @@ module "signup"
             @"userid": toupper(uuid())
             @"pwd": toupper(md5e(@@(pos,"pwd"),"Unicode"))
             @"pwdmd5": toupper(md5(@@(pos,"pwd")))
+            @"external": @true
         }
         
         do dbr.begin(db)
