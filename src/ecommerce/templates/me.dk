@@ -4,6 +4,7 @@ module "Me (profile info)"
 {
     error_message = ""
     ref db = get_database()
+    ref confg=get_site_config()
 
     new prm { @"uid": @@(@http_context, "$session/user/uid") }
     sql_user = "
@@ -105,15 +106,20 @@ module "Me (profile info)"
                     div(class="col-md-2"){ label(class="form-label m-0"){$"Teléfono"} }
                     div(class="col-xl-4"){ input(name="mobile" value="#<@@(user,'mobile')>" type="number" class="form-control form-control-sm shadow-none" step="1" max="999999999999999") }
                 }
-                div(class="row align-items-center mb-3")
+                #! if not(@@(confg,"#hide_addrs"))
                 {
-                    div(class="col-xl-6 d-flex justify-content-end"){ 
-                        a(href="#<@url_address>" class="btn btn-sm d-flex align-items-center gap-2 border text-secondary"){
-                            $"#<@ICON_GEO_ALT>"
-                            $"Mis direcciones"
-                        } 
+                    #$
+                    div(class="row align-items-center mb-3")
+                    {
+                        div(class="col-xl-6 d-flex justify-content-end"){ 
+                            a(href="#<@url_address>" class="btn btn-sm d-flex align-items-center gap-2 border text-secondary"){
+                                $"#<@ICON_GEO_ALT>"
+                                $"Mis direcciones"
+                            } 
+                        }
                     }
                 }
+                
             }
             div(class="mb-5")
             {

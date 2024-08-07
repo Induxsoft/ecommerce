@@ -4,6 +4,16 @@ module "lib"
 {
     #include "functions.dkh"
 
+    get_site_config::
+    {
+        f = path.concat("_config",@@(@http_context,"$request/headers/HTTP_HOST")+".json")
+        if file.exists(f) 
+        {
+            return from.json(file.rtext(f))
+            exception{}
+        }
+        return record.create()
+    }
     current_url::base_only, include_params
     {
         http = ifstr(parse.bool(@@(@http_context,"request/headers/HTTPS")),"https","http")
