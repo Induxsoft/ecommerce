@@ -77,7 +77,9 @@ model ""
     entity "producto" :"TableModel"{}
     entity "venta" :"TableModel"{}
     entity "cliente" :"TableModel"{}
-    entity "ecomm_cart_status" :"EnumModel"
+    
+    // Estado del carrito
+	entity "ecomm_cart_status" :"EnumModel"
     {
         /*
         0-Abierto
@@ -86,6 +88,7 @@ model ""
         */
     }
 
+	//Forma de pago de la compra
     entity "ecomm_cart_fpago" :"EnumModel"
     {
         /*
@@ -96,13 +99,27 @@ model ""
         */
     }
 
+	// Forma de entrega de la compra
+	entity "ecomm_cart_fentrega" :"EnumModel"
+    {
+        /*
+        0-Envío a domicilio
+        1-Pasar a recoger
+        99-No se requiere entrega física
+        */
+    }
+	
     entity "ecomm_cart" : "TableModel"
     {
+		@"tienda": string(32) // Un identificador usado para distinguir carritos de varias tiendas 
         @"ref_user" ref:"tuser"
         @"ref_cliente" ref:"cliente"
         @"status" ref:"ecomm_cart_status" required
         @"pedido" ref:"venta" unique
         @"fpago" ref: "ecomm_cart_fpago"
+		@"entrega" ref:"ecomm_cart_fentrega" 
+		@"enviara" ref: "ecom_usr_adr" //La dirección de envío del usuario (si hay productos que enviar)
+		@"id_pago" string(32) //Una referencia a la transacción de pago
     }
 
     entity "ecomm_cart_det" : "TableModel"
@@ -112,9 +129,13 @@ model ""
         @"cantidad" decimal(12,4) required
         @"unidad" string(15) required
         @"precio" decimal(12,4) required
-        @"numprecio" int required // Número de precio que se usó
-        @"descuentos" decimal(12,4)
-        @"impuestos" decimal(12,4)
+        @"numprecio" int required // Número de precio que se usó, cero si no corresponde a ninguno de los 20 del catálogo de productos
+        @"descuento1" decimal(12,4)
+		@"descuento2" decimal(12,4)
+        @"impuesto1" decimal(12,4)
+		@"impuesto2" decimal(12,4)
+		@"impuesto3" decimal(12,4)
+		@"impuesto4" decimal(12,4)
         @"notas" memo
         @"cupon" string(45) // Código de descuento aplicado
     }
