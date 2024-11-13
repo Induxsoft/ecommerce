@@ -77,18 +77,7 @@ model ""
     entity "producto" :"TableModel"{}
     entity "venta" :"TableModel"{}
     entity "cliente" :"TableModel"{}
-    
-    // Estado del carrito
-	entity "ecomm_cart_status" :"EnumModel"
-    {
-        /*
-        0-Abierto
-        1-Cerrado
-        99-Cancelado
-        */
-    }
 
-	//Forma de pago de la compra
     entity "ecomm_cart_fpago" :"EnumModel"
     {
         /*
@@ -96,6 +85,17 @@ model ""
         1-On line
         2-A la entrega
         3-Crédito de cliente
+        */
+    }
+
+
+    // Estado del carrito
+	entity "ecomm_cart_status" :"EnumModel"
+    {
+        /*
+        0-Abierto
+        1-Cerrado
+        99-Cancelado
         */
     }
 
@@ -111,7 +111,7 @@ model ""
 	
     entity "ecomm_cart" : "TableModel"
     {
-		@"tienda": string(32) // Un identificador usado para distinguir carritos de varias tiendas 
+		@"tienda" string(32) // Un identificador usado para distinguir carritos de varias tiendas 
         @"ref_user" ref:"tuser"
         @"ref_cliente" ref:"cliente"
         @"status" ref:"ecomm_cart_status" required

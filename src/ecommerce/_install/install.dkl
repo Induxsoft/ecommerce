@@ -6,7 +6,11 @@ program "instalador"
     // Archivos de datos iniciales (Orden de importación)
     // deben estar en la carpeta _install/initial_data
 
-    ref @files_to_import = from.json('[]')
+    ref @files_to_import = from.json('[
+    "ecomm_cart_status.csv",
+    "ecomm_cart_fpago.csv",
+    "ecomm_cart_fentrega.csv"
+    ]')
 
     // Lista de privilegios iniciales (arreglo de id de privilegios)
     ref @permissions_to_import = from.json('[]')

@@ -1,0 +1,586 @@
+#include "dkli.dkh"
+#!
+module ":ecommerce.cart"
+{
+    @ecommerce.cart.field_precio="precio1"
+    @ecommerce.cart.forma_pago_online= 1
+    @ecommerce.cart.status_cerrado= 1
+    @ecommerce.cart.impuesto= .16
+    @ecommerce.cart.field_impuesto="impuesto1"
+
+    AddFieldSystem::&data
+    {
+        using data
+        {
+            @"sys_dtcreated*":now()
+            @"sys_timestamp*":now()
+            @"sys_recver": 0
+        }
+        if not(field.exist(data,"sys_guid")){data<"sys_guid">:uuid()}
+    }
+    GetCurrentUser::&db,ids
+    {
+        if trim(ids)==""{ids=@@(@http_context,"$session/user/ids")}
+        new params
+        {
+            @"ids":ids
+        }
+        ref uinfo=dbr.rec(db,"select u.sys_pk,u.userId, u.userName 
+                                from tuser u 
+                                inner join sys_session s on u.sys_pk=s.iuser where s.sys_guid=@ids;",params)
+        return uinfo
+    }
+    GetUserById::&db,iduser
+    {
+        new p{@"id":iduser}
+        return dbr.rec(db,"select sys_pk,userId id,userName nombre from tuser where sys_pk=@id ",p)
+    }
+    GetClienteById::&db,idcliente
+    {
+        new p{@"id":idcliente}
+        return dbr.rec(db,"select sys_pk,codigo,nombre from cliente where sys_pk=@id or codigo=@id limit 1",p)
+    }
+    GetVentaById::&db,idventa
+    {
+        new p{@"id":idventa}
+        return dbr.rec(db,"select sys_pk,referencia from venta where sys_pk=@id",p)
+    }
+    GetDetalleCart::&db,id_carrito
+    {
+        new p{@"id_carrito":id_carrito}
+        ref detalle_cart=dbr.list(db,"select 
+                    sys_pk,
+                    ref_prdo,
+                    cantidad,
+                    unidad,
+                    precio,
+                    numprecio,
+                    descuentos,
+                    impuesto1,
+                    impuesto2,
+                    impuesto3,
+                    impuesto4,
+                    notas,
+                    cupon
+                    FROM ecomm_cart_det 
+                    where ref_cart=@id_carrito
+                    ",p)
+        
+        new totales
+        {
+            @"subtotal": 0
+            @"descuentos": 0
+            @"impuestos": 0
+            @"piezas": 0
+            @"articulos":@count(detalle_cart)
+        }
+        for i = 0; i < @count(detalle_cart)
+        {
+            ref det=@item(detalle_cart,i)
+            det<"sku*">:dbr.rec(db,"select sys_pk,codigo,descripcion from producto where sys_pk=@ref_prdo",det)
+            using totales
+            {
+                @"subtotal":  @@(totales,"#subtotal") + ( @@(det,"#cantidad") * @@(det,"#precio") )
+                @"descuentos": @@(totales,"#descuentos") + @@(det,"#descuentos")
+                @"impuestos": @@(totales,"#impuestos1") + (@@(det,"#impuestos1") + @@(det,"#impuestos2") + @@(det,"#impuestos3") + @@(det,"#impuestos4") )
+                @"piezas": @@(totales,"#piezas") + @@(det,"#cantidad")
+            }
+        }
+
+        new detalle
+        {
+            @"detalle*":detalle_cart
+            @"totales*":totales
+        }
+        return detalle
+    }
+    GetAddresUser::&db,iduser
+    {
+        new p{@"id":iduser}
+
+        return dbr.rec(db,"SELECT a.sys_pk,a.label,a.zip,p.codigo,p.codigotel,p.nombre,p.th_sep,p.dc_sep,p.iso3166,p.iso3166_a3 
+                FROM ecom_usr_adr a
+                INNER JOIN pais p ON a.country=p.sys_pk
+                WHERE a.ref_user=@id",p)
+    }
+    GetClientUser::&db,user,cliente
+    {
+        new p
+        {
+            @"user":user
+            @"cliente":cliente
+        }
+
+        return dbr.rec(db,"SELECT c.sys_pk,c.codigo,c.nombre FROM usrcli u
+        INNER JOIN cliente c ON u.cliente=c.sys_pk
+        INNER JOIN tuser t ON u.usuario=t.sys_pk
+        WHERE t.sys_pk=@user AND c.codigo=@cliente
+        LIMIT 1",p)
+    }
+    ///funciones ---------------
+    CreateCart::&db,&params
+    {
+        ref user=GetCurrentUser(db,@@(params,"$ids"))
+        new ecomm_cart
+        {
+            @"status": 0
+            @"sys_guid":uuid()
+            @"tienda":@@(params,"$id_tienda")
+        }
+        if @@(user,"#sys_pk")> 0{ecomm_cart<"ref_user">:@@(user,"#sys_pk")}
+        if not(field.exist(params,"id_tienda")){ecomm_cart<"id_tienda">:dbr.vars.get(db,"v12_id_tienda")}
+
+        do AddFieldSystem(ecomm_cart)
+
+        do dbr.insert(db,"ecomm_cart",ecomm_cart)
+        return dbr.rec(db,"select * from ecomm_cart where sys_guid=@sys_guid",ecomm_cart)
+    }
+    qtyset::&db,&params
+    {
+        id_carrito=@@(params,"$id_carrito")
+        ref cart=@null
+
+        do dbr.begin(db)
+
+            if str(id_carrito)==""
+            {
+                ref cart=CreateCart(db,params)
+                id_carrito=@@(cart,"$sys_guid")
+                params<"id_carrito">:id_carrito
+            }
+
+            if isnull(cart){ref cart=dbr.rec(db,"select * from ecomm_cart where sys_guid=@id_carrito",params)}
+            ref prod=dbr.rec(db,"SELECT 
+                        sys_pk,
+                        p.precio1,
+                        p.precio2,
+                        p.precio3,
+                        p.precio4,
+                        p.precio5,
+                        p.unidad 
+                        FROM producto p where p.codigo=@sku LIMIT 1",params)
+            pk_cart=@@(cart,"#sys_pk")
+            pk_prod=@@(prod,"#sys_pk")
+
+            if pk_cart < 1{do rise_error(500,"No se econtró el id del carrito")}
+            if pk_prod < 1{do rise_error(500,"No se encontró datos del producto")}
+
+            using params
+            {
+                @"cart":pk_cart
+                @"prod":pk_prod
+            }
+
+            ref ecomm_cart_det=dbr.rec(db,"select sys_pk,
+                                            ref_cart,
+                                            ref_prdo,
+                                            cantidad,
+                                            unidad,
+                                            precio,
+                                            numprecio,
+                                            descuentos,
+                                            impuesto1,
+                                            impuesto2,
+                                            impuesto3,
+                                            impuesto4,
+                                            notas,
+                                            cupon from ecomm_cart_det where ref_cart=@cart and ref_prdo=@prod",params)
+            
+            if not(field.exist(params,"agregar")){cantidad=@@(params,"#cantidad")}
+            else{cantidad=@@(params,"#agregar")}
+            
+            if isnull(ecomm_cart_det)
+            {
+                if cantidad > 0
+                {
+                    @DecimalesEnImportes = parse.num(dbr.vars.getd(db,"FXCA001","6"))
+                    valid_chars="0123456789"
+                    new ecomm_cart_det
+                    {
+                        @"sys_guid":uuid()
+                        @"ref_cart":pk_cart
+                        @"ref_prdo":pk_prod
+                        @"cantidad":cantidad
+                        @"unidad":@@(prod,"$unidad")
+                        @"precio":@@(prod,"#"+@ecommerce.cart.field_precio)
+                        @"numprecio":parse.num(replace(ranydiffchars(@ecommerce.cart.field_precio,valid_chars,"?"),"?",""))
+                        @"descuentos": 0
+                        @"impuesto1": 0
+                        @"impuesto2": 0
+                        @"impuesto3": 0
+                        @"impuesto4": 0
+                        @"notas":""
+                    }
+                    ecomm_cart_det<@ecommerce.cart.field_impuesto>: (@@(ecomm_cart_det,"#cantidad") * @@(ecomm_cart_det,"#precio")) * @ecommerce.cart.impuesto
+
+                    do AddFieldSystem(ecomm_cart_det)
+                    do dbr.insert(db,"ecomm_cart_det",ecomm_cart_det)
+                    params<"_partida">:dbr.num(db,"select sys_pk from ecomm_cart_det where sys_guid=@sys_guid",ecomm_cart_det)
+
+                    cart<"partida*">:ecomm_cart_det
+                }
+            }
+            else 
+            {
+                params<"_partida">:@@(ecomm_cart_det,"#sys_pk")
+
+                if cantidad > 0{cantidad = @@(ecomm_cart_det,"#cantidad") + cantidad}
+                else{cantidad = @@(ecomm_cart_det,"#cantidad") - (cantidad * -1)}
+                
+                if cantidad<= 0
+                {
+                    do dbr.execute(db,"delete from ecomm_cart_det where ref_cart=@cart and ref_prdo=@prod",params)
+                    return @null
+                }
+                new ecomm_cart_det
+                {
+                    @"cantidad":cantidad
+                }
+                do dbr.update(db,"ecomm_cart_det",ecomm_cart_det,"sys_pk=@_partida",params)
+
+                cart<"partida*">:ecomm_cart_det
+            }
+
+        do dbr.commit(db)
+        
+        return cart
+
+        exception
+        {
+            if dbr.in_transaction(db){do dbr.rollback(db)}
+            do rise_error(last_error_code(),last_error())
+        }
+
+    }
+    get::&db,id_carrito
+    {
+
+        new p{@"id_carrito":id_carrito}
+        
+        ref cart=dbr.rec(db,"SELECT e.*,
+            es.const text_status ,
+            ep.const text_pago
+            from ecomm_cart e 
+            INNER JOIN ecomm_cart_status es ON e.`status`=es.id
+            LEFT join ecomm_cart_fpago ep on e.fpago
+            where sys_guid=@id_carrito",p)
+
+        if isnull(cart){do rise_error(500,"No se encontró datos del carrito indicado")}
+
+        ref detalle=GetDetalleCart(db,@@(cart,"#sys_pk"))
+        new det_cart
+        {
+            @"id_carrito":id_carrito
+            @"id_tienda":@@(cart,"$tienda")
+            @"status":@@(cart,"#status")
+            @"text_status":@@(cart,"$text_status")
+            @"usuario*":GetUserById(db,@@(cart,"#ref_user"))
+            @"cliente*":GetClienteById(db,@@(cart,"#ref_cliente"))
+            @"pedido*":GetVentaById(db,@@(cart,"#pedido"))
+            @"forma_pago":@@(cart,"#fpago")
+            @"text_fpago":@@(cart,"$text_pago")
+            @"enviar_a*":GetAddresUser(db,@@(cart,"#ref_user"))
+            @"detalle*":@@(detalle,"&detalle")
+            @"totales*":@@(detalle,"&totales")
+        }
+
+        return det_cart
+    }
+    get_by_ids::&db,ids,idtienda
+    {
+        ref user=GetCurrentUser(db,ids)
+
+        return dbr.str(db,"select sys_guid from ecomm_cart where ref_user=@sys_pk and status=0",user)
+    }
+    link::&db,id_carrito, ids,idtienda, codcliente
+    {
+        ref user=GetCurrentUser(db,ids)
+        ref cliente=GetClientUser(db,@@(user,"#sys_pk"),codcliente)
+        if isnull(cliente){do rise_error(500,"El usuario no esta vinculado al cliente indicado")}
+
+        new p
+        {
+            @"id_carrito":id_carrito
+            @"tienda":idtienda
+            @"cliente":codcliente
+        }
+        ref cart=dbr.rec(db,"select sys_pk,
+                    status,
+                    pedido,
+                    fpago,
+                    tienda
+                    from ecomm_cart e
+                    where e.sys_guid=@id_carrito AND e.tienda=@tienda",p)
+        if isnull(cart){do rise_error(500,"No se encontró datos del carrito")}
+
+        new ecomm_cart{}
+
+        if @@(user,"#sys_pk")> 0{ecomm_cart<"ref_user">:@@(user,"#sys_pk")}
+        if @@(cliente,"#sys_pk")> 0{ecomm_cart<"ref_cliente">:@@(cliente,"#sys_pk")}
+        
+        if @@(ecomm_cart,"#ref_user")> 0 || @@(ecomm_cart,"#ref_cliente") > 0
+        {
+            do dbr.update(db,"ecomm_cart",ecomm_cart,"sys_pk=@sys_pk",cart)
+            return cart
+        }
+        return @null
+    }
+    discount::&db, id_carrito, porcentaje, id_cupon
+    {
+        new p
+        {
+            @"id_carrito":id_carrito
+        }
+         ref cart=dbr.rec(db,"select sys_pk,
+                    status,
+                    pedido,
+                    fpago,
+                    tienda
+                    from ecomm_cart e
+                    where e.sys_guid=@id_carrito",p)
+        if isnull(cart){do rise_error(500,"No se encontró datos del carrito")}
+        using p
+        {
+            @"descuento":(porcentaje / 100)
+            @"cart":@@(cart,"#sys_pk")
+        }
+        
+        return dbr.execute(db,"update ecomm_cart_det set descuentos=(cantidad * precio) - ((cantidad * precio) * @descuento) where ref_cart=@cart",p)
+    }
+    deliveron::&db,&params
+    {
+        new p
+        {
+            @"id_carrito":@@(params,"$id_carrito")
+            @"entrega":@@(params,"#forma_entrega")
+        }
+        ref cart=dbr.rec(db,"select sys_pk,
+                    ref_user,
+                    status,
+                    pedido,
+                    fpago,
+                    tienda
+                    from ecomm_cart e
+                    where e.sys_guid=@id_carrito",p)
+        if isnull(cart){do rise_error(500,"No se encontró datos del carrito")}
+        
+        pk_addres=@@(params,"#direccion_existente")
+
+        ref nueva_direccion=@@(params,"&nueva_direccion")
+        if not(isnull(nueva_direccion))
+        {
+            using nueva_direccion
+            {
+                @"sys_guid":uuid()
+                @"ref_user":@@(cart,"#ref_user")
+            }
+            do AddFieldSystem(nueva_direccion)
+            do dbr.insert(db,"ecom_usr_adr",nueva_direccion)
+            pk_addres=dbr.num(db,"select sys_pk from ecom_usr_adr where sys_guid=@sys_guid",nueva_direccion)
+
+            cart<"new_addres*">:nueva_direccion
+        }
+        if pk_addres < 1{do rise_error(500,"No se ha definido una dirección de entrega")}
+
+        p<"cart">:@@(cart,"#sys_pk")
+        p<"addres">:pk_addres
+
+        do dbr.execute(db,"update ecomm_cart set entrega=@entrega,enviara=@addres where sys_pk=@cart",p)
+
+        return cart
+    }
+    pay::&db,&params
+    {
+        new p
+        {
+            @"id_carrito":@@(params,"$id_carrito")
+            @"fpago":@@(params,"#forma_pago")
+            @"id_pago":@@(params,"$id_pago")
+        }
+        ref cart=dbr.rec(db,"select sys_pk,
+                    ref_user,
+                    status,
+                    pedido,
+                    fpago,
+                    tienda
+                    from ecomm_cart e
+                    where e.sys_guid=@id_carrito",p)
+        if isnull(cart){do rise_error(500,"No se encontró datos del carrito")}
+
+        if @@(p,"#fpago")==@ecommerce.cart.forma_pago_online && trim(@@(p,"$id_pago"))==""{do rise_error(500,"Debe indicar un ID de pago")}
+
+        p<"cart">:@@(cart,"#sys_pk")
+        p<"status">:@ecommerce.cart.status_cerrado
+        return dbr.execute(db,"update ecomm_cart set fpago=@fpago,id_pago=@id_pago,status=@status where sys_pk=@cart",p)
+    }
+    proc::&db,id_carrito
+    {
+        new p
+        {
+            @"id_carrito":@@(params,"$id_carrito")
+        }
+        ref cart=dbr.rec(db,"select sys_pk,
+                    ref_user,
+                    ref_cliente,
+                    status,
+                    pedido,
+                    fpago,
+                    tienda
+                    from ecomm_cart e
+                    where e.sys_guid=@id_carrito",p)
+        if isnull(cart){do rise_error(500,"No se encontró datos del carrito")}
+
+        ref data=GetDetalleCart(db,@@(params,"$id_carrito"))
+        ref detalle=@@(data,"&detalle")
+        if @count(detalle) > 0
+        {
+            do dbr.begin(db)
+                
+                ref data_totales_venta=@@(detalle,"&totales")
+                using data_totales_venta
+                {
+                    @"ref_cliente":@@(cart,"#ref_cliente")
+                }
+                ref venta= insert_venta(db,data_totales_venta)
+                venta<"ialmacen">: dbr.num(db, "SELECT ialmacen FROM cconsumo WHERE sys_pk = @icconsumo", venta)
+
+                for i = 0; i < @count(detalle)
+                {
+                    ref partida=@item(detalle,i)
+                    do insert_dventa(db,partida,venta)
+                }
+            do dbr.commit(db)
+
+            return data
+            exception
+            {
+                if dbr.in_transaction(db){do dbr.rollback(db)}
+                do rise_error(last_error_code(),last_error())
+            }
+            
+            
+        }
+        return @null
+    }
+    //funciones extras
+    insert_venta::&db, &data
+    {
+        ref dt_now = dbr.sql("NOW()")
+        ref dfolio = get_folio(db, 2)
+        new venta
+        {
+            @"sys_timestamp*": dt_now
+            @"sys_guid": uuid()
+            @"sys_dtcreated*": dt_now
+            @"sys_exported*": 0
+            @"sys_dtexported*": dt_now
+
+            @"auditado": 0
+            @"contabilizado": 0
+            @"descuento1": 0
+            @"descuento2": 0
+            @"formapago": 1                     // 0.cNo_aplica, 1.cContado, 2.cCrédito, 3.cFinanciado, 4.cFinanciado
+            @"importeadicional": 0
+            @"impuesto1": @@(data, "#impuesto1")
+            @"impuesto2": @@(data, "#impuesto2")
+            @"impuesto3": @@(data, "#impuesto3")
+            @"impuesto4": @@(data, "#impuesto4")
+            @"subtotal": @@(data,"#subtotal") 
+            @"referencia": cut(dbr.str(db,"select replace(uuid(),'-','-')"),25)
+            @"documento": 2                    // 1.cCotización, 2.cPedido, 3.cRemisión, 4.cFactura, 5.cNota_de_crédito, 6.cTicket, 7.cGasto, 8.cNota_de_cargo ... 
+            @"statusadministrativo": 3          // 0.cNo_aplica, 1.cAbierto, 2.cCerrado, 3.cProcesado, 99.cCancelado
+            @"statusentrega": 3                 // 0.cNo_aplica, 1.cPor_Entregar, 3.cEntregado 
+            @"statusfacturacion": 1             // 0.cNo_Aplica, 1.cPor_facturar, 2.cParcialmente_facturado, 3.cFacturado
+            @"statusfinanciero": 2              // 0.cNo_aplica, 1.cCon_adeudo, 2.cSaldado, 3.cConsignado
+            @"tipodomicilio": 0
+            @"fecha*": dt_now
+            @"fembarque*": dt_now
+            @"fentrega*": dt_now
+            @"fliquidacion*": dt_now
+            @"fultimocobro*": dt_now
+            @"tipocambio": 1 // Obtener de la divisa?
+            @"vencimiento*": dt_now
+            @"icconsumo": 1
+            @"icliente": @@(data,"#ref_cliente")
+            @"idivisa": 1 // Obtener desde el cliente?
+            @"ifolio": @@(dfolio, "sys_pk")
+        }
+
+        do dbr.insert(db, "venta", venta)
+        return dbr.rec(db,"SELECT * FROM venta WHERE sys_guid=@sys_guid", venta)
+    }
+    insert_dventa::&db,&data,&venta
+    {
+        new dventa
+        {
+            @"sys_guid": uuid()
+            @"sys_timestamp*": now
+            @"sys_dtcreated*": now
+
+            @"cantidad": 1
+            @"descuento1": 0
+            @"descuento2": 0
+            @"factor": 1
+            @"impuesto1": @@(data, "#impuesto1")
+            @"impuesto2": @@(data, "#impuesto2")
+            @"impuesto3": @@(data, "#impuesto3")
+            @"impuesto4": @@(data, "#impuesto4")
+            @"precio": @@(data, "#precio")
+            @"status": 0                                // 0:no_aplica, 1:por_entregar, 2:entregado, 3:facturado, 4:devuelto
+            @"tipocambio": @@(venta, "#tipocambio")
+            @"unidad": "PZA"
+            @"xfacturar": 1
+            @"xsalir": 0
+            @"ialmacen": @@(venta,"#ialmacen")
+            @"iproducto": @@(data, "#producto")
+            @"fk_venta_detalle": @@(venta, "#sys_pk")
+        }
+        do dbr.insert(db, "dventa", dventa)
+    }
+    get_referencia::serie, numsig, formato
+    {
+        lnumbr = length(numsig)
+        lserie = length(serie)
+        lformt = length(formato)
+
+        if length(lnumbr) > lformt { return right(numsig, lformt) }
+
+        nformat = remove(str(formato),2,lserie)
+        exception { do rise_error(0, "La configuración de longitud de la máscara o formato debe ser mayor a " + str(lserie+1) + "para la serie " + str(serie)) }
+        num = serie + format(val(numsig),nformat)
+
+        if length(num) > lformt {return right(num, lformt) }
+ 
+        return num
+    }
+    get_folio::&db, block
+    {
+        new_folio = dbr.folios.get_new(db, block)
+        if dbr.folios.set_new(db, block, new_folio, 3) == 0 { do rise_error(0, "No fué posible guardar el folio") }
+        return dbr.folios.info(db, block, new_folio)
+    }
+    get_impuesto_info::&rec, precio, cantidad
+	{
+        @zonaImpuesto = 0 //0-Interior, 1-Frontera configuración?
+		importe_adicional=0
+		p_descuento1=0 //Porcentajes de descuento aplicables
+		p_descuento2=0
+
+		desc1=0 //Importes totales a descontar con base en el porcentaje y la cantidad
+		desc2=0
+
+         bruto = (precio / (1+(parseImpuesto(field.dstr(rec,"i3venta",""),@zonaImpuesto)/100)))
+         i3 = ((bruto*cantidad) * (parseImpuesto(field.dstr(rec,"i3venta",""),@zonaImpuesto)/100))
+		new precioInfo
+		{
+            @"impuesto1": 0
+			@"impuesto2": 0
+			@"impuesto3": round(i3, @DecimalesEnImportes)
+			@"impuesto4": 0
+
+            @"precio_bruto": round(bruto, @DecimalesEnImportes)
+		}
+
+		return precioInfo
+	}
+}

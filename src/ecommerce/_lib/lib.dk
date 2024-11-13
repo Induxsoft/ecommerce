@@ -66,8 +66,9 @@ module "lib"
         base = replace(list.str(split(url,"?"),0), "/","")
         ref parts = split(base,":")
         headers<"HTTPS">: (list.str(parts,0) == "https")
-        headers<"HTTP_HOST">: list.str(parts,1)
-        if list.count(parts) > 2 {
+        if list.count(parts) > 1{headers<"HTTP_HOST">: list.str(parts,1)}
+        if list.count(parts) > 2 
+        {
             headers<"SERVER_PORT">: list.str(parts,2)
         }
         return headers

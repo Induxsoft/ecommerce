@@ -84,18 +84,18 @@ module "Controller configs"
 
 		if fext == ""
 		{
-			if file.exists(path.concat(templates_package,file+".dkl")){ template = path.concat(templates_package,file+".dkl") }
-			else if file.exists(path.concat(templates_package,file+".dk")){ template = path.concat(templates_package,file+".dk") }
-			else if file.exists(path.concat(templates_website,file+".dkl")){ template = path.concat(templates_website,file+".dkl") }
+			if file.exists(path.concat(templates_website,file+".dkl")){ template = path.concat(templates_website,file+".dkl") }
 			else if file.exists(path.concat(templates_website,file+".dk")){ template = path.concat(templates_website,file+".dk") }
 			else if file.exists(path.concat(templates_wcommon,file+".dkl")){ template = path.concat(templates_wcommon,file+".dkl") }
 			else if file.exists(path.concat(templates_wcommon,file+".dk")){ template = path.concat(templates_wcommon,file+".dk") }
+			else if file.exists(path.concat(templates_package,file+".dkl")){ template = path.concat(templates_package,file+".dkl") }
+			else if file.exists(path.concat(templates_package,file+".dk")){ template = path.concat(templates_package,file+".dk") }
 		}
 		else 
 		{
-			if file.exists(path.concat(templates_package,file)){ template = path.concat(templates_package,file) }
-			else if file.exists(path.concat(templates_website,file)){ template = path.concat(templates_website,file) }
+			if file.exists(path.concat(templates_website,file)){ template = path.concat(templates_website,file) }
 			else if file.exists(path.concat(templates_wcommon,file)){ template = path.concat(templates_wcommon,file) }
+			else if file.exists(path.concat(templates_package,file)){ template = path.concat(templates_package,file) }
 		}
 
 		return template
