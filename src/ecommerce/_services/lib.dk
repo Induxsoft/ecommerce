@@ -1,0 +1,118 @@
+#include "dkli.dkh"
+#!
+module ""
+{
+    #include "cookies.dkl"
+    
+    GetIdCarrito::
+    {
+        _cart_id=cookie.get("_cart_id")
+        return trim(_cart_id)
+    }
+    SetIdCarrito::id_carrito
+    {
+        do cookie.set("_cart_id",id_carrito)
+        return id_carrito
+    }
+    SaveCartLink::&db,ids,idtienda,codcliente
+    {
+        id_carrito=GetIdCarrito()
+        if id_carrito==""{return}
+
+        return ecommerce.cart.link(db,id_carrito,ids,idtienda,codcliente)
+    }
+    SaveFormaEntrega::&db,url_redir
+    {
+        _METHOD = @@(@http_context,"request/headers/REQUEST_METHOD")
+        ref _GET = ifnull(@@(@http_context,"&request/get"),record.create())
+        ref _POST = ifnull(@@(@http_context,"&request/post"),record.create())
+
+        if _METHOD != "POST" { return }
+        id_carrito=GetIdCarrito()
+        if id_carrito==""{do rise_error(500,"No hay un carrito abierto")}
+
+        new params
+        {
+            @"id_carrito":id_carrito
+            @"forma_entrega":@@(_POST,"#fentrega")
+        }
+        if @@(_POST,"#direccion_existente") > 0{params<"direccion_existente">:@@(_POST,"#direccion_existente")}
+
+        if @@(_POST,"#fentrega")== @ecommerce.cart.forma_entega_domicilio
+        {
+            new nueva_direccion
+            {
+                @"label":@@(_POST,"$label")
+                @"country":@@(_POST,"$country")
+                @"zip":@@(_POST,"$zip")
+                @"addr_l1":@@(_POST,"$addr_l1")
+                @"addr_l2":@@(_POST,"$addr_l2")
+                @"addr_l3":@@(_POST,"$addr_l3")
+                @"phone":@@(_POST,"$phone")
+                @"recip_name":@@(_POST,"$recip_name")
+                @"notes":@@(_POST,"$notes")
+            }
+            params<"nueva_direccion*">:nueva_direccion
+        }
+        ref res=ecommerce.cart.deliveron(db,params)
+        if trim(url_redir)!=""
+        {
+            @http_context<"response/headers/Location">:url_redir
+        }
+        return res
+    }
+    SaveFormPago::&db,url_redir
+    {
+        _METHOD = @@(@http_context,"request/headers/REQUEST_METHOD")
+        ref _GET = ifnull(@@(@http_context,"&request/get"),record.create())
+        ref _POST = ifnull(@@(@http_context,"&request/post"),record.create())
+
+        if _METHOD != "POST" { return }
+
+        id_carrito=GetIdCarrito()
+        if id_carrito==""{do rise_error(500,"No hay un carrito abierto")}
+
+        new params
+        {
+            @"id_carrito":id_carrito
+            @"forma_pago":@@(_POST,"#fpago")
+            @"id_pago":@@(_POST,"$id_pago")
+        }
+        r= ecommerce.cart.pay(db,params)
+        if not(r){do rise_error(500,"No se logró guardar la forma de pago")}
+        
+        ref res=ecommerce.cart.proc(db,id_carrito)
+
+        if trim(url_redir)!=""
+        {
+            do SetIdCarrito("")
+            @http_context<"response/headers/Location">:url_redir
+        }
+        return res
+    }
+    ScritGlobal::&db,&data_cart
+    {
+        if isnull(data_cart)
+        {
+            id_carrito=GetIdCarrito()
+            if id_carrito!=""
+            {
+                ref data_cart=ecommerce.cart.get(db,id_carrito)
+            }
+        }
+
+        #$
+        script(src="#<@js_crud_model>"){""}
+        script(src="#<@js_cart>"){""}
+
+        script
+        {
+            $'
+                if(!cart)cart={};
+                cart.url_update_cart="#<@UPDATE_CART>";
+                cart.articulos=#<@@(data_cart,"#totales/articulos")>;
+            '
+        }
+        #!
+    }
+}

@@ -4,9 +4,11 @@ module ":ecommerce.cart"
 {
     @ecommerce.cart.field_precio="precio1"
     @ecommerce.cart.forma_pago_online= 1
+    @ecommerce.cart.forma_pago_pendiente= 0
     @ecommerce.cart.status_cerrado= 1
     @ecommerce.cart.impuesto= .16
     @ecommerce.cart.field_impuesto="impuesto1"
+    @ecommerce.cart.decimalesEnImportes = 6
 
     AddFieldSystem::&data
     {
@@ -20,7 +22,10 @@ module ":ecommerce.cart"
     }
     GetCurrentUser::&db,ids
     {
-        if trim(ids)==""{ids=@@(@http_context,"$session/user/ids")}
+        if trim(ids)==""
+        {
+           if isset("@http_context"){ids=@@(@http_context,"$session/user/ids")} 
+        }
         new params
         {
             @"ids":ids
@@ -82,11 +87,18 @@ module ":ecommerce.cart"
             {
                 @"subtotal":  @@(totales,"#subtotal") + ( @@(det,"#cantidad") * @@(det,"#precio") )
                 @"descuentos": @@(totales,"#descuentos") + @@(det,"#descuentos")
-                @"impuestos": @@(totales,"#impuestos1") + (@@(det,"#impuestos1") + @@(det,"#impuestos2") + @@(det,"#impuestos3") + @@(det,"#impuestos4") )
+                @"impuestos": @@(totales,"#impuestos") + (@@(det,"#impuesto1") + @@(det,"#impuesto2") + @@(det,"#impuesto3") + @@(det,"#impuesto4") )
                 @"piezas": @@(totales,"#piezas") + @@(det,"#cantidad")
             }
         }
 
+        using totales
+        {
+            @"subtotal":    round(@@(totales,"#subtotal"),@ecommerce.cart.decimalesEnImportes)
+            @"descuentos":  round(@@(totales,"#descuentos"),@ecommerce.cart.decimalesEnImportes)
+            @"impuestos":   round(@@(totales,"#impuestos"),@ecommerce.cart.decimalesEnImportes)
+            @"piezas":      round(@@(totales,"#piezas"),@ecommerce.cart.decimalesEnImportes)
+        }
         new detalle
         {
             @"detalle*":detalle_cart
@@ -117,6 +129,19 @@ module ":ecommerce.cart"
         WHERE t.sys_pk=@user AND c.codigo=@cliente
         LIMIT 1",p)
     }
+    GetTotales::&data
+    {
+        new totales
+        {
+            @"subtotal":  ( @@(data,"#cantidad") * @@(data,"#precio") )
+            @"descuentos": @@(data,"#descuentos")
+            @"impuestos": @@(data,"#impuesto1") + @@(data,"#impuesto2") + @@(data,"#impuesto3") + @@(data,"#impuesto4") 
+            @"piezas":  @@(data,"#cantidad")
+            @"articulos": 1
+        }
+
+        return totales
+    }
     ///funciones ---------------
     CreateCart::&db,&params
     {
@@ -126,6 +151,7 @@ module ":ecommerce.cart"
             @"status": 0
             @"sys_guid":uuid()
             @"tienda":@@(params,"$id_tienda")
+            @"fpago":@ecommerce.cart.forma_pago_pendiente
         }
         if @@(user,"#sys_pk")> 0{ecomm_cart<"ref_user">:@@(user,"#sys_pk")}
         if not(field.exist(params,"id_tienda")){ecomm_cart<"id_tienda">:dbr.vars.get(db,"v12_id_tienda")}
@@ -133,7 +159,7 @@ module ":ecommerce.cart"
         do AddFieldSystem(ecomm_cart)
 
         do dbr.insert(db,"ecomm_cart",ecomm_cart)
-        return dbr.rec(db,"select * from ecomm_cart where sys_guid=@sys_guid",ecomm_cart)
+        return dbr.rec(db,"select *,sys_guid id_carrito from ecomm_cart where sys_guid=@sys_guid",ecomm_cart)
     }
     qtyset::&db,&params
     {
@@ -149,7 +175,10 @@ module ":ecommerce.cart"
                 params<"id_carrito">:id_carrito
             }
 
-            if isnull(cart){ref cart=dbr.rec(db,"select * from ecomm_cart where sys_guid=@id_carrito",params)}
+            if isnull(cart){ref cart=dbr.rec(db,"select *,sys_guid id_carrito 
+            from ecomm_cart 
+            where sys_guid=@id_carrito
+            and status= 0 ",params)}
             ref prod=dbr.rec(db,"SELECT 
                         sys_pk,
                         p.precio1,
@@ -157,7 +186,8 @@ module ":ecommerce.cart"
                         p.precio3,
                         p.precio4,
                         p.precio5,
-                        p.unidad 
+                        p.unidad,
+                        p.impuestos 
                         FROM producto p where p.codigo=@sku LIMIT 1",params)
             pk_cart=@@(cart,"#sys_pk")
             pk_prod=@@(prod,"#sys_pk")
@@ -188,13 +218,21 @@ module ":ecommerce.cart"
             
             if not(field.exist(params,"agregar")){cantidad=@@(params,"#cantidad")}
             else{cantidad=@@(params,"#agregar")}
-            
+            @ecommerce.cart.decimalesEnImportes = parse.num(dbr.vars.getd(db,"FXCA001","6"))
+            ref imp = dbr.rec(db, "SELECT sys_pk, i1venta, i2venta, i3venta, i4venta FROM cfgimpuesto WHERE sys_pk=@impuestos LIMIT 1;", prod)
+
+            cart<"partida*">:@null
+            cart<"totales*">:@null
+
             if isnull(ecomm_cart_det)
             {
                 if cantidad > 0
                 {
-                    @DecimalesEnImportes = parse.num(dbr.vars.getd(db,"FXCA001","6"))
                     valid_chars="0123456789"
+
+                    precio=@@(prod,"#"+@ecommerce.cart.field_precio)
+                    ref impuestos = get_impuesto_info(imp, precio, cantidad)
+
                     new ecomm_cart_det
                     {
                         @"sys_guid":uuid()
@@ -202,22 +240,22 @@ module ":ecommerce.cart"
                         @"ref_prdo":pk_prod
                         @"cantidad":cantidad
                         @"unidad":@@(prod,"$unidad")
-                        @"precio":@@(prod,"#"+@ecommerce.cart.field_precio)
+                        @"precio":precio
                         @"numprecio":parse.num(replace(ranydiffchars(@ecommerce.cart.field_precio,valid_chars,"?"),"?",""))
                         @"descuentos": 0
-                        @"impuesto1": 0
-                        @"impuesto2": 0
-                        @"impuesto3": 0
-                        @"impuesto4": 0
+                        @"impuesto1": @@(impuestos,"#impuesto1")
+                        @"impuesto2": @@(impuestos,"#impuesto2")
+                        @"impuesto3": @@(impuestos,"#impuesto3")
+                        @"impuesto4": @@(impuestos,"#impuesto4")
                         @"notas":""
                     }
-                    ecomm_cart_det<@ecommerce.cart.field_impuesto>: (@@(ecomm_cart_det,"#cantidad") * @@(ecomm_cart_det,"#precio")) * @ecommerce.cart.impuesto
 
                     do AddFieldSystem(ecomm_cart_det)
                     do dbr.insert(db,"ecomm_cart_det",ecomm_cart_det)
                     params<"_partida">:dbr.num(db,"select sys_pk from ecomm_cart_det where sys_guid=@sys_guid",ecomm_cart_det)
 
                     cart<"partida*">:ecomm_cart_det
+                    cart<"totales*">:GetTotales(ecomm_cart_det)
                 }
             }
             else 
@@ -229,16 +267,25 @@ module ":ecommerce.cart"
                 
                 if cantidad<= 0
                 {
-                    do dbr.execute(db,"delete from ecomm_cart_det where ref_cart=@cart and ref_prdo=@prod",params)
-                    return @null
+                    do dbr.execute(db,"delete from ecomm_cart_det where sys_pk=@_partida",params)
                 }
-                new ecomm_cart_det
+                else 
                 {
-                    @"cantidad":cantidad
+                    precio=@@(ecomm_cart_det,"#precio")
+                    ref impuestos = get_impuesto_info(imp, precio, cantidad)
+                    new ecomm_cart_det
+                    {
+                        @"cantidad":cantidad
+                        @"impuesto1": @@(impuestos,"#impuesto1")
+                        @"impuesto2": @@(impuestos,"#impuesto2")
+                        @"impuesto3": @@(impuestos,"#impuesto3")
+                        @"impuesto4": @@(impuestos,"#impuesto4")
+                    }
+                    do dbr.update(db,"ecomm_cart_det",ecomm_cart_det,"sys_pk=@_partida",params)
+                    ecomm_cart_det<"precio">:precio                    
+                    cart<"partida*">:ecomm_cart_det
+                    cart<"totales*">:GetTotales(ecomm_cart_det)
                 }
-                do dbr.update(db,"ecomm_cart_det",ecomm_cart_det,"sys_pk=@_partida",params)
-
-                cart<"partida*">:ecomm_cart_det
             }
 
         do dbr.commit(db)
@@ -254,7 +301,7 @@ module ":ecommerce.cart"
     }
     get::&db,id_carrito
     {
-
+        @ecommerce.cart.decimalesEnImportes = parse.num(dbr.vars.getd(db,"FXCA001","6"))
         new p{@"id_carrito":id_carrito}
         
         ref cart=dbr.rec(db,"SELECT e.*,
@@ -262,7 +309,7 @@ module ":ecommerce.cart"
             ep.const text_pago
             from ecomm_cart e 
             INNER JOIN ecomm_cart_status es ON e.`status`=es.id
-            LEFT join ecomm_cart_fpago ep on e.fpago
+            LEFT join ecomm_cart_fpago ep on e.fpago=ep.id
             where sys_guid=@id_carrito",p)
 
         if isnull(cart){do rise_error(500,"No se encontró datos del carrito indicado")}
@@ -289,14 +336,18 @@ module ":ecommerce.cart"
     get_by_ids::&db,ids,idtienda
     {
         ref user=GetCurrentUser(db,ids)
+        using user{@"tienda":idtienda}
 
-        return dbr.str(db,"select sys_guid from ecomm_cart where ref_user=@sys_pk and status=0",user)
+        return dbr.str(db,"select sys_guid from ecomm_cart 
+                where ref_user=@sys_pk 
+                and tienda=@tienda
+                and status=0",user)
     }
     link::&db,id_carrito, ids,idtienda, codcliente
     {
         ref user=GetCurrentUser(db,ids)
         ref cliente=GetClientUser(db,@@(user,"#sys_pk"),codcliente)
-        if isnull(cliente){do rise_error(500,"El usuario no esta vinculado al cliente indicado")}
+        // if isnull(cliente){do rise_error(500,"El usuario no esta vinculado al cliente indicado")}
 
         new p
         {
@@ -380,10 +431,13 @@ module ":ecommerce.cart"
 
             cart<"new_addres*">:nueva_direccion
         }
-        if pk_addres < 1{do rise_error(500,"No se ha definido una dirección de entrega")}
+        if pk_addres > 0
+        {
+            p<"addres">:pk_addres
+        }
 
         p<"cart">:@@(cart,"#sys_pk")
-        p<"addres">:pk_addres
+        
 
         do dbr.execute(db,"update ecomm_cart set entrega=@entrega,enviara=@addres where sys_pk=@cart",p)
 
@@ -417,7 +471,7 @@ module ":ecommerce.cart"
     {
         new p
         {
-            @"id_carrito":@@(params,"$id_carrito")
+            @"id_carrito":id_carrito
         }
         ref cart=dbr.rec(db,"select sys_pk,
                     ref_user,
@@ -427,11 +481,13 @@ module ":ecommerce.cart"
                     fpago,
                     tienda
                     from ecomm_cart e
-                    where e.sys_guid=@id_carrito",p)
+                    where e.sys_guid=@id_carrito 
+                    and status=1",p)
         if isnull(cart){do rise_error(500,"No se encontró datos del carrito")}
 
-        ref data=GetDetalleCart(db,@@(params,"$id_carrito"))
+        ref data=GetDetalleCart(db,@@(cart,"#sys_pk"))
         ref detalle=@@(data,"&detalle")
+        
         if @count(detalle) > 0
         {
             do dbr.begin(db)
@@ -447,8 +503,16 @@ module ":ecommerce.cart"
                 for i = 0; i < @count(detalle)
                 {
                     ref partida=@item(detalle,i)
+                    partida<"producto">:@@(partida,"#ref_prdo")
                     do insert_dventa(db,partida,venta)
                 }
+                using p
+                {
+                    @"venta":@@(venta,"#sys_pk")
+                    @"cart":@@(cart,"#sys_pk")
+                }
+                res= dbr.execute(db,"update ecomm_cart set pedido=@venta where sys_pk=@cart",p)
+                if not(res){do rise_error(500,"No se logró vicular la venta al carrito")}
             do dbr.commit(db)
 
             return data
@@ -486,7 +550,7 @@ module ":ecommerce.cart"
             @"impuesto3": @@(data, "#impuesto3")
             @"impuesto4": @@(data, "#impuesto4")
             @"subtotal": @@(data,"#subtotal") 
-            @"referencia": cut(dbr.str(db,"select replace(uuid(),'-','-')"),25)
+            @"referencia": cut(dbr.str(db,"select replace(uuid(),'-','-')",@null),25)
             @"documento": 2                    // 1.cCotización, 2.cPedido, 3.cRemisión, 4.cFactura, 5.cNota_de_crédito, 6.cTicket, 7.cGasto, 8.cNota_de_cargo ... 
             @"statusadministrativo": 3          // 0.cNo_aplica, 1.cAbierto, 2.cCerrado, 3.cProcesado, 99.cCancelado
             @"statusentrega": 3                 // 0.cNo_aplica, 1.cPor_Entregar, 3.cEntregado 
@@ -511,6 +575,7 @@ module ":ecommerce.cart"
     }
     insert_dventa::&db,&data,&venta
     {
+        ref now = dbr.sql("NOW()")
         new dventa
         {
             @"sys_guid": uuid()
@@ -575,12 +640,18 @@ module ":ecommerce.cart"
 		{
             @"impuesto1": 0
 			@"impuesto2": 0
-			@"impuesto3": round(i3, @DecimalesEnImportes)
+			@"impuesto3": round(i3, @ecommerce.cart.decimalesEnImportes)
 			@"impuesto4": 0
-
-            @"precio_bruto": round(bruto, @DecimalesEnImportes)
+            @"precio": round(bruto, @ecommerce.cart.decimalesEnImportes)
 		}
 
 		return precioInfo
+	}
+    parseImpuesto::cad, zona
+	{
+		if trim(cad) == "" { return 0 }
+		ref l=split(cad,"|")
+		return val(replace(list.str(l,zona),"%",""))
+		exception{ return 0 }
 	}
 }

@@ -40,6 +40,10 @@ module "lib"
         if isnull(db) { ref db = dbr.open(get_qn()) }
         return db
     }
+    GetIds::
+    {
+        return @@(@http_context, "session/user/ids")
+    }   
     required_session::goback
     {
         if @@(@http_context, "session/user/ids") == ""

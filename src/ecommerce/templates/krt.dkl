@@ -1,0 +1,105 @@
+#include "dkli.dkh"
+#!
+module ""
+{
+    ref db=get_database()
+    _cart_id=GetIdCarrito()
+
+    ref @data_cart=record.create()
+    if _cart_id!=""
+    {
+        ref @data_cart=ecommerce.cart.get(db,_cart_id)
+    }
+    
+    ref detalle=ifnull(@@(@data_cart,"&detalle"),list.create())
+    @ids=GetIds()
+
+    decimales_importe=parse.num(dbr.vars.getd(db,"FXCA001","6"))
+    
+    #$
+    div(class="container")
+    {
+        script(src="#<@js_crud_model>"){""}
+        script(src="#<@js_cart>"){""}
+        div(class="card")
+        {
+            div(class="card-header")
+            {
+                table(class="table")
+                {
+                    tr
+                    {
+                        td(class="fw-bold"){"ID carrito"}
+                        td{"#<@@(@data_cart,'$id_carrito')>"}
+                        td(class="fw-bold"){"ID tienda"}
+                        td{"#<@@(@data_cart,'$id_tienda')>"}
+                    }
+                }
+
+                h5{"Totales"}
+                table(class="table")
+                {
+                    tr
+                    {
+                        td(class="fw-bold" ){"Subtotal"}
+                        td(id="subtotal"){"$ 0.0"}
+                        td(class="fw-bold" ){"Impuestos"}
+                        td(id="impuestos"){"$ 0.0"}
+                        td(class="fw-bold" ){"Descuento"}
+                        td(id="descuento"){"$ 0.0"}
+                        td(class="fw-bold" ){"Total"}
+                        td(id="total"){"$ 0.0"}
+                    }
+                }
+                #! if @ids!="" && @count(detalle) > 0
+                {
+                    #$
+                    div(class="d-flex justify-content-end")
+                    {
+                        a(href="#<@url_forma_entrega>" class="btn btn-sm btn-primary")
+                        {
+                            "Continuar"
+                            $'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="16" fill="currentColor" class="bi bi-arrow-right" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8"/>
+                            </svg>'
+                        }
+                    }
+                }
+            }
+            div(class="card-body")
+            {
+                div(id="cart-detalle")
+                {$""
+                    table(class="table")
+                    {
+                        thead
+                        {
+                            tr
+                            {
+                                td{"Producto"}
+                                td{"Precio"}
+                                td{"Cantidad"}
+                                td{""}
+                            }
+                        }
+                        tbody(id="body_detalle")
+                        {$""
+                        }
+                    }
+                }   
+                
+            }
+
+            script
+            {
+                $'
+                    cart.decimales_importe=#<decimales_importe>;
+                    cart.data_cart=#<to.json(@data_cart)>;
+                    cart.detalle=#<to.json(detalle)>;
+                    cart.url_update_cart="#<@UPDATE_CART>";
+                    cart.articulos=#<@@(@data_cart,"#totales/articulos")>;
+                '
+            }
+        }
+    }
+}

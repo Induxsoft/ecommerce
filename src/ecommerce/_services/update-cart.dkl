@@ -1,0 +1,72 @@
+#include "dkli.dkh"
+#!
+module "service"
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    #include "webcl.dkh"
+    #include "dbr.dkh"
+    #include "ecommerce/_lib/lib.dk"
+    #include "ecommerce/_lib/config.dk"
+    #include "dbr.vars.dkl"
+    #include "dbr.folios.dkl"
+    #include "website.dkl"
+    #include "ecomerce.cart.dkh"
+
+    @http_context<"response/headers/Access-Control-Allow-Origin">:"*"
+    @http_context<"response/headers/Access-Control-Allow-Headers">:"*"
+    @http_context<"response/headers/Access-Control-Allow-Methods">:"*"
+
+    _METHOD = @@(@http_context,"request/headers/REQUEST_METHOD")
+    if _METHOD == "OPTIONS" { return }
+
+    new response { @"success" : @true }
+
+    function SetResponse(&response)
+    {
+        @http_context<"response/headers/content-type"> : "application/json;charset=utf-8"
+        @http_context<"response/output"> : "text"
+        @http_context<"response/text"> : to.json(response)
+    }
+    ref @database=get_database()
+    if isnull(@database){do rise_error(500,"La base de datos no puede ser nula")}
+
+    ref _GET = ifnull(@@(@http_context,"&request/get"),record.create())
+    ref _POST = ifnull(@@(@http_context,"&request/post"),record.create())
+
+    if list.count(list.create_from_fields(_POST)) < 1 
+    {
+        ref _POST = from.json(field.dstr(@http_context,"request/post_string","{}"))
+    }
+
+    _cart_id=GetIdCarrito()
+    producto=@@(_POST,"#producto")
+    producto >> _GET
+
+   ref prod=dbr.rec(@database,"select sys_guid,codigo from producto where sys_pk=@producto",_GET)
+    new params
+    {
+        @"id_carrito":_cart_id
+        @"sku":@@(prod,"$codigo")
+        @"agregar":@@(_POST,"#agregar")
+        @"cantidad":@@(_POST,"#agregar")
+        @"id_tienda":@ID_TIENDA
+    }
+    ref cart=ecommerce.cart.qtyset(@database,params)
+    if _cart_id==""{_cart_id=SetIdCarrito(@@(cart,"$id_carrito"))}
+
+    response<"data*">:ecommerce.cart.get(@database,_cart_id)
+    
+    do SetResponse(response)
+    exception
+    {
+        do errordet(@false)
+        using response
+        {
+            @"success": @false
+            @"code": last_error_code()
+            @"message": last_error()
+        }
+        do SetResponse(response)
+    }
+}

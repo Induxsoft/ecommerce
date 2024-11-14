@@ -1,0 +1,56 @@
+#include "dkli.dkh"
+#!
+module ""
+{
+    ref db=get_database()
+    ref forma_entrega=dbr.list(db,"select * from ecomm_cart_fentrega where id in(0,1)",@null)
+
+    do SaveFormaEntrega(db,@url_forma_pago)
+
+    #$
+    div(class="container")
+    {
+        script(src="#<@js_crud_model>"){""}
+        script(src="#<@js_cart>"){""}
+
+        form(action="" method="POST")
+        {
+            div(class="card")
+            {
+                div(class="card-header")
+                {
+                    h5{"Forma de entrega"}
+                    div(class="d-flex justify-content-end")
+                    {
+                        button(class="btn btn-sm btn-primary")
+                        {
+                            "Continuar"
+                            $'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="16" fill="currentColor" class="bi bi-arrow-right" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8"/>
+                            </svg>'
+                        }
+                    }
+                }
+                div(class="card-body")
+                {
+                    div(id="f-entrega")
+                    {
+                        #!
+                        for i = 0; i < @count(forma_entrega)
+                        {
+                            ref fentrega=@item(forma_entrega,i)
+                            #$
+                            label(class="d-flex")
+                            {
+                                input(type="radio" required="true" class="induxsoft-form-control" id="fentrega" name="fentrega" value="#<@@(fentrega,'#id')>")
+                                $"#<@@(fentrega,'$const')>"
+                            }
+                        }
+                    }
+                    
+                }   
+            }
+        }
+        
+    }
+}

@@ -11,6 +11,8 @@ module
 	@url_address = "/-/address/"
 	@url_search = "/-/r/"
 	@url_product = "/-/sku/"
+	@url_forma_entrega="/-/dlvr.dkl"
+	@url_forma_pago="/-/pay.dkl"
 
 	@req_pwd_max_days = 7	// Vigencia en días de una solicitud de cambio de contraseña
 
@@ -24,4 +26,13 @@ module
 	@js_ecommerce_utils = "/$/js/utils.js"
 	@js_address = "/$/js/address.js"
 	@js_crud_model = "/$/js/induxsoft.crudl.model.js"
+	@js_cart="/$/js/cart.js"
+
+	@ID_TIENDA="cande_01" //longitud máxima de 50
+
+	//url servicios
+	@UPDATE_CART="/!/update-cart.dkl"
+
+	//var eco
+	@ecommerce.cart.forma_entega_domicilio= 0
 }

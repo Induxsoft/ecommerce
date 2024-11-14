@@ -2,8 +2,11 @@
 #!
 module
 {
+    ref db = get_database()
     #$ div
     {
         h1{$"Store Front"}
+        #!
+        do ScritGlobal(db,@null)
     }
 }

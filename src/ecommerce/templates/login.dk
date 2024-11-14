@@ -47,7 +47,9 @@ module "login"
             do dbr.setHashUnicode(@true)
             _userid = dbr.str(db, sql, pos)
             ref _db = dbr.login(get_qn(), _userid, @@(pos,"$pwd"))
+            ids = dbr.getSID(_db)
         }
+        do SaveCartLink(_db,ids,@ID_TIENDA,"") //vincular usuario con el carrito abierto
 
 		urlext = parse_url_session(_db, @@(pos,"$exit_url_encode"))
 		@http_context<"response/headers/Location">: urlext
