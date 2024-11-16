@@ -5,7 +5,7 @@ module ""
     ref db=get_database()
     ref forma_pago=dbr.list(db,"select * from ecomm_cart_fpago where id in(1,2,3)",@null)
     
-    if not(isnull(SaveFormPago(db,"/"))){return}
+    if not(isnull(SaveFormPago(db,@url_orders))){return}
 
     exception{@current_error=last_error()}
     #$

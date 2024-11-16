@@ -25,10 +25,12 @@ module ""
                 {
                     tr
                     {
-                        td(class="fw-bold"){"ID carrito"}
+                        td(class="fw-bold"){"ID carrito:"}
                         td{"#<@@(@data_cart,'$id_carrito')>"}
-                        td(class="fw-bold"){"ID tienda"}
+                        td(class="fw-bold"){"ID tienda:"}
                         td{"#<ifstr(@@(@data_cart,'$id_tienda')!='',@@(@data_cart,'$id_tienda'),@ID_TIENDA)>"}
+                        td(class="fw-bold"){"Pedido:"}
+                        td{"#<@@(@data_cart,'$pedido/referencia')>"}
                     }
                 }
 

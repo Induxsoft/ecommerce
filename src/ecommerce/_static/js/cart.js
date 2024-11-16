@@ -37,7 +37,11 @@ var cart=
         this.mod_addres_user=document.getElementById("mod_addres_user")
         this.mod_next=document.getElementById("mod_next");
         this.mod_domicilio=document.getElementById("mod-domicilio");
-
+        //filtros de barra
+        this.select_marca=document.getElementById("select-marca");
+        this.select_modelo=document.getElementById("select-modelo");
+        this.select_version=document.getElementById("select-version");
+        
         if(this.articulos > 0)this.SetValue(this.counter_cart,this.articulos);
 
         this.detalle_HTML=`<tbody>
@@ -62,6 +66,9 @@ var cart=
             this.add_addres.type="button";
             this.add_addres.setAttribute("onclick","cart.addAdres()");
         }
+
+        if(this.select_marca)this.select_marca.addEventListener("change",()=>{console.log("111")});
+        if(this.select_modelo)this.select_modelo.addEventListener("change",()=>{});
     },
     SelectMetEntregaDom()
     {

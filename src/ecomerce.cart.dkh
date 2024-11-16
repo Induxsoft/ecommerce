@@ -6,16 +6,14 @@ module ":ecommerce.cart"
     @ecommerce.cart.forma_pago_online= 1
     @ecommerce.cart.forma_pago_pendiente= 0
     @ecommerce.cart.status_cerrado= 1
-    @ecommerce.cart.impuesto= .16
-    @ecommerce.cart.field_impuesto="impuesto1"
     @ecommerce.cart.field_descuento="descuento1"
     @ecommerce.cart.decimalesEnImportes = 6
     @ecommerce.cart.cliente ="(PG)"
     @ecommerce.cart.venta_fpago = 1 //contado
     @ecommerce.cart.cconsumo = 1 
     @ecommerce.cart.divisa = 1 
-    @ecommerce.cart.documento = 2 //pedido
-    @ecommerce.cart.tipo_cambio = 1 //pedido
+    @ecommerce.cart.documento = 2 //bLOCK DE DOCUMENTOS pedido
+    @ecommerce.cart.tipo_cambio = 1 //
 
     AddFieldSystem::&data
     {
@@ -506,6 +504,7 @@ module ":ecommerce.cart"
                 
                 ref data_totales_venta=@@(data,"&totales")
                 cliente=@@(cart,"#ref_cliente")
+
                 if cliente < 1
                 {
                     p<"cod_cliente">:@ecommerce.cart.cliente
@@ -516,24 +515,44 @@ module ":ecommerce.cart"
                 }
                 if cliente < 1{do rise_error(500,"No se ha indicado un cliente para el pedido")}
 
-                using data_totales_venta
-                {
-                    @"ref_cliente":cliente
-                }
+                using data_totales_venta{@"ref_cliente":cliente}
+
                 ref venta= insert_venta(db,data_totales_venta)
                 venta<"ialmacen">: dbr.num(db, "SELECT ialmacen FROM cconsumo WHERE sys_pk = @icconsumo", venta)
 
+                new data_venta
+                {
+                    @"descuento1": 0
+                    @"descuento2": 0
+                    @"impuesto1": 0
+                    @"impuesto2": 0
+                    @"impuesto3": 0
+                    @"impuesto4": 0
+                }
                 for i = 0; i < @count(detalle)
                 {
                     ref partida=@item(detalle,i)
                     partida<"producto">:@@(partida,"#ref_prdo")
+
+                    using data_venta
+                    {
+                        @"descuento1": @@(data_venta,"#descuento1") + @@(partida,"#descuento1")
+                        @"descuento2": @@(data_venta,"#descuento2") + @@(partida,"#descuento2")
+                        @"impuesto1": @@(data_venta,"#impuesto1") + @@(partida,"#impuesto1")
+                        @"impuesto2": @@(data_venta,"#impuesto2") + @@(partida,"#impuesto2")
+                        @"impuesto3": @@(data_venta,"#impuesto3") + @@(partida,"#impuesto3")
+                        @"impuesto4": @@(data_venta,"#impuesto4") + @@(partida,"#impuesto4")
+                    }
                     do insert_dventa(db,partida,venta)
                 }
+
                 using p
                 {
                     @"venta":@@(venta,"#sys_pk")
                     @"cart":@@(cart,"#sys_pk")
                 }
+                do dbr.update(db,"venta",data_venta,"sys_pk=@venta",p)
+
                 res= dbr.execute(db,"update ecomm_cart set pedido=@venta where sys_pk=@cart",p)
                 if not(res){do rise_error(500,"No se logró vicular la venta al carrito")}
             do dbr.commit(db)
@@ -553,7 +572,17 @@ module ":ecommerce.cart"
     insert_venta::&db, &data
     {
         ref dt_now = dbr.sql("NOW()")
-        ref dfolio = get_folio(db, 2)
+        ref dfolio = get_folio(db, @ecommerce.cart.documento)
+
+        ref_size=dbr.vars.getd(db,"ventas_fix_ref_size",6)
+
+        serie=dbr.str(db,"SELECT bd.serie FROM foliosdocumentos fd
+                    INNER JOIN blockdocumentos bd ON fd.block=bd.sys_pk
+                    WHERE fd.sys_pk=@sys_pk",dfolio)
+        if trim(serie)==""{serie="P"}
+
+        referencia=serie+ padleft(str(@@(dfolio,"#new_folio")),ref_size,"0")
+
         new venta
         {
             @"sys_timestamp*": dt_now
@@ -561,11 +590,10 @@ module ":ecommerce.cart"
             @"sys_dtcreated*": dt_now
             @"sys_exported*": 0
             @"sys_dtexported*": dt_now
-
             @"auditado": 0
             @"contabilizado": 0
-            @"descuento1": 0
-            @"descuento2": 0
+            @"descuento1": @@(data, "#descuento1")
+            @"descuento2": @@(data, "#descuento2")
             @"formapago": @ecommerce.cart.venta_fpago                     // 0.cNo_aplica, 1.cContado, 2.cCrédito, 3.cFinanciado, 4.cFinanciado
             @"importeadicional": 0
             @"impuesto1": @@(data, "#impuesto1")
@@ -573,7 +601,7 @@ module ":ecommerce.cart"
             @"impuesto3": @@(data, "#impuesto3")
             @"impuesto4": @@(data, "#impuesto4")
             @"subtotal": @@(data,"#subtotal") 
-            @"referencia": cut(dbr.str(db,"select replace(uuid(),'-','-')",@null),25)
+            @"referencia": referencia
             @"documento": @ecommerce.cart.documento            // 1.cCotización, 2.cPedido, 3.cRemisión, 4.cFactura, 5.cNota_de_crédito, 6.cTicket, 7.cGasto, 8.cNota_de_cargo ... 
             @"statusadministrativo": 3          // 0.cNo_aplica, 1.cAbierto, 2.cCerrado, 3.cProcesado, 99.cCancelado
             @"statusentrega": 3                 // 0.cNo_aplica, 1.cPor_Entregar, 3.cEntregado 
@@ -594,6 +622,7 @@ module ":ecommerce.cart"
         }
 
         do dbr.insert(db, "venta", venta)
+
         return dbr.rec(db,"SELECT * FROM venta WHERE sys_guid=@sys_guid", venta)
     }
     insert_dventa::&db,&data,&venta
@@ -622,30 +651,18 @@ module ":ecommerce.cart"
             @"ialmacen": @@(venta,"#ialmacen")
             @"iproducto": @@(data, "#producto")
             @"fk_venta_detalle": @@(venta, "#sys_pk")
+            @"notas":@@(data,"$notas")
         }
         do dbr.insert(db, "dventa", dventa)
-    }
-    get_referencia::serie, numsig, formato
-    {
-        lnumbr = length(numsig)
-        lserie = length(serie)
-        lformt = length(formato)
-
-        if length(lnumbr) > lformt { return right(numsig, lformt) }
-
-        nformat = remove(str(formato),2,lserie)
-        exception { do rise_error(0, "La configuración de longitud de la máscara o formato debe ser mayor a " + str(lserie+1) + "para la serie " + str(serie)) }
-        num = serie + format(val(numsig),nformat)
-
-        if length(num) > lformt {return right(num, lformt) }
- 
-        return num
     }
     get_folio::&db, block
     {
         new_folio = dbr.folios.get_new(db, block)
         if dbr.folios.set_new(db, block, new_folio, 3) == 0 { do rise_error(0, "No fué posible guardar el folio") }
-        return dbr.folios.info(db, block, new_folio)
+        
+        ref folio=dbr.folios.info(db, block, new_folio)
+        folio<"new_folio">:new_folio
+        return folio
     }
     get_impuesto_info::&rec, precio, cantidad
 	{

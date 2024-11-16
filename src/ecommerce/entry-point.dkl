@@ -53,10 +53,8 @@ module "Controller configs"
 	scripts='
 		<script src="/$/js/induxsoft.crudl.model.js"></script>		
 		<script src="/$/js/cart.js"></script>
-		<script src="https://mdbcdn.b-cdn.net/wp-content/themes/mdbootstrap4/docs-app/js/dist/main.min.js"></script>
 
 		<link href="/$/css/ecommerce.css" rel="stylesheet">
-		<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 	'
 	@http_context<"session/resource/properties/web_page/end_head">:scripts
 
@@ -108,9 +106,12 @@ module "Controller configs"
 
 		return template
 	}
-
+	confg<"search_bar_mode">: 1
 	do GetCartOpenByUser()
 	
+	@http_context<"template_filter">:GenHTMLMode(confg)
+	@http_context<"template_filter_after_search">:GenBTn(confg)
+
 	include search_template(def_tmplt)
 	// #include "crudl/controller.dkl"
 	

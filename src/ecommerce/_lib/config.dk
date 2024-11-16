@@ -13,6 +13,7 @@ module
 	@url_product = "/-/sku/"
 	@url_forma_entrega="/-/dlvr/"
 	@url_forma_pago="/-/pay/"
+	@url_orders="/-/orders/"
 	@url_det_order="/-/det-order/@orden/"
 
 	@redir_signup_login=@false

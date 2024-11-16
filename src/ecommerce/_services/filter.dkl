@@ -1,0 +1,73 @@
+#include "dkli.dkh"
+#!
+module "service"
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    #include "webcl.dkh"
+    #include "dbr.dkh"
+    #include "ecommerce/_lib/lib.dk"
+    #include "ecommerce/_lib/config.dk"
+    #include "website.dkl"
+
+    @http_context<"response/headers/Access-Control-Allow-Origin">:"*"
+    @http_context<"response/headers/Access-Control-Allow-Headers">:"*"
+    @http_context<"response/headers/Access-Control-Allow-Methods">:"*"
+
+    _METHOD = @@(@http_context,"request/headers/REQUEST_METHOD")
+    if _METHOD == "OPTIONS" { return }
+
+    new response { @"success" : @true }
+
+    function SetResponse(&response)
+    {
+        @http_context<"response/headers/content-type"> : "application/json;charset=utf-8"
+        @http_context<"response/output"> : "text"
+        @http_context<"response/text"> : to.json(response)
+    }
+    ref @database=get_database()
+    if isnull(@database){do rise_error(500,"La base de datos no puede ser nula")}
+
+    ref _GET = ifnull(@@(@http_context,"&request/get"),record.create())
+    ref _POST = ifnull(@@(@http_context,"&request/post"),record.create())
+
+    if list.count(list.create_from_fields(_POST)) < 1 
+    {
+        ref _POST = from.json(field.dstr(@http_context,"request/post_string","{}"))
+    }
+
+    switch @@(_GET,"$tbl")
+    {
+        case "modelo"
+        {
+            sql="select sys_pk,descripcion from car_modelo"
+            if @@(_POST,"#marca") > 0
+            {
+                sql=sql + " where ref_car_marca=@marca"
+            }
+            
+        }
+        case "version"
+        {
+            // code...
+            break
+        }
+        default
+        {
+            do rise_error(500,"No implementado")
+        }
+    }
+    
+    do SetResponse(response)
+    exception
+    {
+        do errordet(@false)
+        using response
+        {
+            @"success": @false
+            @"code": last_error_code()
+            @"message": last_error()
+        }
+        do SetResponse(response)
+    }
+}

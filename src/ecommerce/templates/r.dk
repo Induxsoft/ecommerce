@@ -64,6 +64,7 @@ module "General search"
                 END
             )
             AND IFNULL(prod.existencia,0)>0
+            AND prod.iclase > 1 and prod.iclase < 7
         ORDER BY #<order>
         LIMIT #<limit>;
     "

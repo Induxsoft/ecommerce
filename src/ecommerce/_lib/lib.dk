@@ -164,5 +164,58 @@ module "lib"
         }
         return _img
     }
+    GenOption::&l
+    {
+        template=""
+        for i = 0; i < @count(l)
+        {
+            ref o=@item(l,i)
+            template=template + "<option value='"+@@(o,"$sys_pk")+"'>"+@@(o,"$descripcion")+"</option>"
+        }
+        return template
+    }
+    GenBTn::&config
+    {
+        templates=""
+        if @@(config,"#search_bar_mode")== 1
+        {
+            templates="<button class='btn btn-sm btn-primary rounded-0'>Filtrar</button>"
+        }
+        return templates
+    }
+    GenHTMLMode::&config
+    {
+        templates=""
+        ref db=get_database()
+        if @@(config,"#search_bar_mode")== 1
+        {
+            template_marca="<select class='form-select rounded-0 shadow-none' name='a-mr' id='select-marca'>
+                            <option value='*'>Todas (*)</option>"
+            ref car_marca=dbr.list(db,"select sys_pk,descripcion from car_marca",@null)
+            template_marca=template_marca + GenOption(car_marca)
+            template_marca=template_marca+ "</select>"
+
+            templates=templates + template_marca
+
+            /////modelo
+
+            template_modelo="<select class='form-select rounded-0 shadow-none' name='a-md' id='select-modelo'>"
+            // ref car_modelo=dbr.list(db,"select sys_pk,concat_ws(' - ',codigo,descripcion)descripcion from car_modelo",@null)
+            // template_modelo=template_modelo + GenOption(car_modelo)
+            template_modelo=template_modelo+ "</select>"
+            templates=templates + template_modelo
+
+            //version
+
+            template_vehiculo="<select class='form-select rounded-0 shadow-none' name='a-vr' id='select-version'>"
+            // ref car_version=dbr.list(db,"select sys_pk,concat_ws(' - ',codigo,descripcion)descripcion from car_version",@null)
+            // template_vehiculo=template_vehiculo + GenOption(car_version)
+            template_vehiculo=template_vehiculo+ "</select>"
+
+            templates=templates + template_vehiculo
+        }
+
+        return templates
+    }
     
 }

@@ -180,12 +180,14 @@ module ":ui"
                                 textarea(name="notes" class="#<input_class>" placeholder="Referencias del lugar"){$""}
                             }
                             small(class="text-muted"){$"* Campos requeridos"}
+
+                            div(class="modal-footer")
+                            {
+                                button(type="submit" class="btn btn-sm button_forms" id="add-addres"){$"Aceptar"}
+                                button(type="button" class="btn btn-sm btn-light" "data-bs-dismiss"="modal" id="close-modal-addres"){$"Cancelar"}
+                            }
                         }
-                        div(class="modal-footer")
-                        {
-                            button(type="submit" class="btn btn-sm button_forms" id="add-addres"){$"Aceptar"}
-                            button(type="button" class="btn btn-sm btn-light" "data-bs-dismiss"="modal" id="close-modal-addres"){$"Cancelar"}
-                        }
+                        
                     }
                 }
             }
