@@ -1,0 +1,82 @@
+#include "dkli.dkh"
+#pattern function "function '$name' ()"
+#!
+module "service"
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    #include "webcl.dkh"
+    #include "dbr.dkh"
+    #include "website.dkl"
+    #include "ecommerce/_lib/lib.dk"
+
+    @http_context<"response/headers/Access-Control-Allow-Origin">:"*"
+    @http_context<"response/headers/Access-Control-Allow-Headers">:"*"
+    @http_context<"response/headers/Access-Control-Allow-Methods">:"*"
+
+    _METHOD = @@(@http_context,"request/headers/REQUEST_METHOD")
+    if _METHOD == "OPTIONS" { return }
+
+    new response { @"success" : @true }
+
+    function SetResponse(&response)
+    {
+        @http_context<"response/headers/content-type"> : "application/json;charset=utf-8"
+        @http_context<"response/output"> : "text"
+        @http_context<"response/text"> : to.json(response)
+    }
+     ref @database=get_database()
+    if isnull(@database){do rise_error(500,"La base de datos no puede ser nula")}
+    ref _GET = ifnull(@@(@http_context,"&request/get"),record.create())
+    ref _POST = ifnull(@@(@http_context,"&request/post"),record.create())
+
+    if list.count(list.create_from_fields(_POST)) < 1 
+    {
+        ref _POST = from.json(field.dstr(@http_context,"request/post_string","{}"))
+    }
+
+    if trim(@@(_POST,"$label")) == "" { do rise_error(0, "Se esperaba el campo 'Nombre'" ) }
+    if trim(@@(_POST,"$country")) == "" { do rise_error(0, "Se esperaba el campo 'País'" ) }
+    if trim(@@(_POST,"$zip")) == "" { do rise_error(0, "Se esperaba el campo 'Código postal'" ) }
+
+    new prm { @"uid": @@(@http_context, "session/user/uid") }
+    ref user = dbr.rec(@database, "SELECT sys_pk FROM tuser WHERE userid = @uid LIMIT 1;", prm)
+    user<"label">: @@(_POST,"$label")
+
+    if @@(_POST,"#sys_pk") == 0 
+    {
+        if not(isnull(dbr.rec(@database, "SELECT sys_pk FROM ecom_usr_adr WHERE ref_user=@sys_pk AND label=@label LIMIT 1;", user)))
+        {
+            do rise_error(0, "Ya se ha registrado el nombre del domicilio, por favor elija uno diferente.")
+        }
+        _POST<"ref_user">: @@(user,"#sys_pk")
+        using _POST
+        {
+            @"sys_guid":uuid()
+            @"sys_dtcreated*":now()
+            @"sys_timestamp*":now()
+            @"sys_recver": 0
+        }
+        do dbr.insert(@database, "ecom_usr_adr", _POST)
+        response<"data*">:dbr.rec(@database,"select * from ecom_usr_adr where sys_guid=@sys_guid",_POST)
+    }
+    else 
+    {
+        _POST<"ref_user">:@@(user,"#sys_pk")
+        do dbr.update(@database,"ecom_usr_adr",_POST,"sys_pk=@sys_pk",_POST)
+        response<"data*">:dbr.rec(@database,"select * from ecom_usr_adr where sys_pk=@sys_pk",_POST)
+    }
+    
+    do SetResponse(response)
+    exception
+    {
+        do errordet(@false)
+        using response
+        {
+            @"success": @false
+            @"code": last_error_code()
+            @"message": last_error()
+        }
+        do SetResponse(response)
+    }
+}

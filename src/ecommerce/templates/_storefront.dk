@@ -5,7 +5,15 @@ module
     ref db = get_database()
     #$ div
     {
-        h1{$"Store Front"}
+        div(class="d-flex justify-content-center")
+        {
+            h1{$"Mi tienda Online"}
+            
+        //     $'<div class="square" data-mdb-animation-init="" data-mdb-animation-start="onHover" data-mdb-animation="fade-out-up" data-mdb-animation-reset="true" data-mdb-animation-initialized="true" style="animation-duration: 500ms;">
+        //     fade-out-up
+        //   </div>'
+        }
+        
         #!
         do ScritGlobal(db,@null)
     }

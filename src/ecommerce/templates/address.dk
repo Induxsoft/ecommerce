@@ -2,8 +2,7 @@
 #!
 module "Direcciones de envío"
 {
-    #include "uielements.dkl"
-
+    #include "../_lib/ui.dk"
     error_message = ""
     do required_session(@false)
     ref db = get_database()
@@ -22,7 +21,8 @@ module "Direcciones de envío"
 
         if @@(post,"#sys_pk") == 0 
         {
-            if not(isnull(dbr.rec(db, "SELECT sys_pk FROM ecom_usr_adr WHERE ref_user=@sys_pk AND label=@label LIMIT 1;", user))){
+            if not(isnull(dbr.rec(db, "SELECT sys_pk FROM ecom_usr_adr WHERE ref_user=@sys_pk AND label=@label LIMIT 1;", user)))
+            {
                 do rise_error(0, "Ya se ha registrado el nombre del domicilio, por favor elija uno diferente.")
             }
             post<"ref_user">: @@(user,"#sys_pk")
@@ -46,39 +46,18 @@ module "Direcciones de envío"
             do dbr.execute(db, "UPDATE ecom_usr_adr SET sys_deleted = 1, label = SUBSTRING(CONCAT('~',sys_pk,label),1,35) WHERE sys_pk = @address;", get)
         }
     }
-    
-    sql_countrs = "SELECT sys_pk, CONCAT(codigo, ' - ', nombre) country_desc FROM pais;"
-    sql_address = "
-        SELECT adr.sys_pk, adr.sys_recver, adr.label, p.codigo pais_code, adr.country, adr.zip, adr.addr_l1, 
-            adr.addr_l2, adr.phone, adr.recip_name, adr.notes
-        FROM ecom_usr_adr adr
-            INNER JOIN tuser u ON adr.ref_user = u.sys_pk
-            INNER JOIN pais p ON adr.country = p.sys_pk
-        WHERE u.userid = @uid
-            AND IFNULL(adr.sys_deleted,0) = 0;
-    "
-    
-    ref countrs_list = dbr.list(db, sql_countrs, @null)
-    ref address_list = dbr.list(db, sql_address, prm)
 
-    new sel_country
-    {
-        @"datatable*": countrs_list
-        @"id": "sel_country"
-        new member "attributes"
-        {
-            @"class": "form-select form-select-sm shadow-none"
-            @"name": "country"
-            @"required": ""
-        }
-        @"value_field": "sys_pk"
-        @"text_field": "country_desc"
-    }
     input_class = "form-control form-control-sm shadow-none"
-    
+    exception{@current_error=last_error()}
     #$ div(class="")
     {
-        style{$'.address_card:hover{ border-color: var(--primary-color) !important;} '}
+        #!
+        do ScritGlobal(db,@null)
+        #$
+        script(src="#<@js_crud_model>"){$""}
+        script(src="#<@js_ecommerce_utils>"){$""}
+        script(src="#<@js_address>"){$""}
+
         div(class="alert alert-danger #<ifstr(error_message == '', 'd-none', '')>"){ $"#<error_message>" }
 
         div(class="container-sm p-5 bg-white mt-4 border shadow-sm")
@@ -93,138 +72,13 @@ module "Direcciones de envío"
             }
             div(style="min-height:50vh; max-height: 60vh; overflow: auto;")
             {
-                div(class="row p-0 m-0")
-                {
-                    #! go foreach.lobj(index:i, value:address) with(address_list)
-                    {
-                        #$ div(class="col-sm-6 mb-4")
-                        {
-                            div(class="border p-3 rounded address_card h-100")
-                            {
-                                div(class="d-flex gap-2 align-content-center title_forms mb-2")
-                                {
-                                    div{ $"#<@ICON_GEO_ALT_24>" }
-                                    h6(class="m-0 flex-grow-1" style="line-height: 1.5rem;"){$"#<@@(address,'$label')>"}
-                                    div(class="dropdown dropstart")
-                                    {
-                                        button(class="btn btn-sm shadow-none text-secondary" type="button" id="btn_addr_option" "data-bs-toggle"="dropdown"){$"#<@ICON_THREE_DOTS>"}
-                                        ul(class="dropdown-menu" "aria-labelledby"="btn_addr_option")
-                                        {
-                                            li{ button(class="dropdown-item d-flex align-items-center gap-2 btn-sm" type="button" onclick="address.open_address_modal(#<@@(address,'#sys_pk')>)"){$"#<@ICON_PENCIL_FILL> Editar"} }
-                                            li{ button(class="dropdown-item d-flex align-items-center gap-2 btn-sm" type="button" onclick="InduxsoftCrudlModel.Delete(#<@@(address,'#sys_pk')>,'./?address=#<@@(address,'#sys_pk')>')"){$"#<@ICON_TRASH_FILL> Eliminar"} }
-                                        }
-                                    }
-                                }
-                                div
-                                {
-                                    small(class="d-block"){$"#<@@(address,'$zip')>, #<@@(address,'$addr_l1')>"}
-                                    small(class="d-block"){$"#<@@(address,'$addr_l2')>"}
-                                    small(class="d-block"){$"#<@@(address,'$phone')>"}
-                                }
-                            }
-                        }
-                    }
-                }
+                #!
+                do ui.CreateCardAddress(db,@null,@null)
+                #$
             }
         }
-
-        div(class="modal fade" id="mdl_address" tabindex="-1" "aria-hidden"="true" "data-bs-backdrop"="false")
-        {
-            div(class="modal-dialog modal-dialog-centered modal-dialog-scrollable")
-            {
-                form(action="." method="POST" class="modal-content rounded-0 border-0 box_shadow" )
-                {
-                    input(type="hidden" name="sys_pk")
-                    input(type="hidden" name="sys_recver")
-                    
-                    div(class="modal-header border-0 py-0 px-4")
-                    {
-                        div(class="my-4")
-                        {
-                            h3(class="modal-title title_forms"){$"Información de la dirección"}
-                        }
-                    }
-                    div(class="modal-body px-4")
-                    {
-                        div(class="mb-2")
-                        {
-                            h6{$"Nombre*"}
-                            input(name="label" list="labels" class="#<input_class>" placeholder="Mi casa" required="true" maxlength="35")
-                            datalist(id="labels")
-                            {
-                                option(value="Mi casa")
-                                option(value="Mi escuela")
-                                option(value="Casa de mi mamá")
-                                option(value="Casa de mi papá")
-                                option(value="Casa de mi hermano")
-                                option(value="Casa de mi mejor amigo")
-                                option(value="Casa de mi jefe")
-                                option(value="Casa de mis padres")
-                                option(value="Casa de mis abuelos")
-                                option(value="Casa de mis suegros")
-                                option(value="Trabajo de mi mamá")
-                                option(value="Trabajo de mi papá")
-                                option(value="Trabajo de mi hermano")
-                                option(value="Trabajo de mi mejor amigo")
-                                option(value="Trabajo de mi pareja")
-                            }
-                        }
-                        div(class="row mb-2")
-                        {
-                            div(class="col-8")
-                            {
-                                h6{$"Pais*"}
-                                ##
-                                do uie.dbSelect(sel_country)
-                                ##
-                            }
-                            div(class="col-4")
-                            {
-                                h6{$"Código postal*"}
-                                input(name="zip" class="#<input_class>" placeholder="29039" required="true" maxlength="15")
-                            }
-                        }
-                        div(class="mb-2")
-                        {
-                            h6{$"Dirección"}
-                            input(name="addr_l1" class="#<input_class>" placeholder="Dirección" maxlength="512")
-                        }
-                        div(class="mb-2")
-                        {
-                            h6{$"Colonia"}
-                            input(name="addr_l2" class="#<input_class>" placeholder="Colonia" maxlength="512")
-                        }
-                        div(class="mb-2")
-                        {
-                            h6{$"Telefono"}
-                            input(name="phone" class="#<input_class>" placeholder="Teléfono" maxlength="50")
-                        }
-                        div(class="mb-2")
-                        {
-                            h6{$"Persona que recibe"}
-                            input(name="recip_name" class="#<input_class>" placeholder="Nombre de la persona que recibe" maxlength="100")
-                        }
-                        div(class="mb-2")
-                        {
-                            h6{$"Referencias"}
-                            textarea(name="notes" class="#<input_class>" placeholder="Referencias del lugar"){$""}
-                        }
-                        small(class="text-muted"){$"* Campos requeridos"}
-                    }
-                    div(class="modal-footer")
-                    {
-                        button(type="submit" class="btn btn-sm button_forms"){$"Aceptar"}
-                        button(type="button" class="btn btn-sm btn-light" "data-bs-dismiss"="modal"){$"Cancelar"}
-                    }
-                }
-            }
-        }
-
-        script(src="#<@js_crud_model>"){$""}
-        script(src="#<@js_ecommerce_utils>"){$""}
-        script(src="#<@js_address>"){$""}
-        script{$'
-            address.address_list = #<to.json(address_list)>;
-        '}
+        #!
+        do ui.CreateModalAddress(db)
+        #$
     }
 }

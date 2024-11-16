@@ -11,10 +11,8 @@ module "Product page"
     _cart_id=GetIdCarrito()
 
     ref @data_cart=@null
-    if _cart_id!=""
-    {
-        ref @data_cart=ecommerce.cart.get(_db,_cart_id)
-    }
+
+    
     new prm { @"pk": get_entity_id() }
     sql_prod = "
         SELECT p.sys_pk, p.codigo, p.descripcion, p.costoultimo, p.impuestos,
@@ -25,7 +23,8 @@ module "Product page"
             IFNULL(p.precio117,0) precio117, IFNULL(p.precio118,0) precio118, IFNULL(p.precio119,0) precio119, IFNULL(p.precio120,0) precio120,
             l.descripcion linea, 
             IFNULL(m.descripcion,'') marca, 
-            IFNULL(d.descripcion,'') departamento
+            IFNULL(d.descripcion,'') departamento,
+            IFNULL(P.existencia,0)existencia
         FROM producto p
             INNER JOIN linea l ON p.ilinea = l.sys_pk
             LEFT JOIN marca m ON p.imarca = m.sys_pk
@@ -34,6 +33,13 @@ module "Product page"
     "
     ref product = dbr.rec(_db, sql_prod, prm)
 
+    cantidad= 1
+    if _cart_id!=""
+    {
+        ref @data_cart=ecommerce.cart.get(_db,_cart_id)
+        ref prd=GetRecordList(@@(@data_cart,"&detalle"),"#sku/sys_pk",@@(product,"#sys_pk"))
+        if not(isnull(prd)){cantidad=trun(@@(prd,"#cantidad"))}
+    }
     // IMAGE
     ref heads_v12 = url_to_headers(dbr.vars.get(_db, "ecommerce_backoffice_site"))
     ref img_data = get_img_data(_db, product, heads_v12)
@@ -47,6 +53,30 @@ module "Product page"
         @"numero": getNumPrice(_db)
     }
     _price = getPrice(_db, priceparams)
+    exception{@current_error=last_error()}
+    
+    ids=GetIds()
+    action_fav_ids="@"
+    if trim(ids)==""{action_fav_ids="location.href='"+UrlLogin()+"'"}
+
+    ref user=GetCurrentUser(_db)
+
+    new p_fav
+    {
+        @"user":@@(user,"#sys_pk")
+        @"tienda":@ID_TIENDA
+        @"producto": @@(product,'#sys_pk')
+    }
+
+    pfav=@false
+    action_fav=action_fav_ids
+    if action_fav=="@"
+    {
+        pfav=ProdFav(_db,p_fav)
+        action_fav="cart.ActFav(#<@@(product,'#sys_pk')>)"
+        if pfav{action_fav="cart.ActFav(#<@@(product,'#sys_pk')>,'delete')"}
+    }
+    style=ifstr(pfav,'color:red','')
 
     #$ div(class="container-sm p-5 bg-white mt-4")
     {
@@ -76,7 +106,7 @@ module "Product page"
                         div(class="btn-group btn-group-sm" role="group")
                         {
                             button(type="button" class="btn border text-secondary fw-bold" onclick="cart.ActQuit(0,#<@@(product,'#sys_pk')>)"){$"-"}
-                            div(class="px-2 border-top border-bottom d-flex align-items-center"){ small(id="cant_prod_#<@@(product,'#sys_pk')>"){$"1"} }
+                            div(class="px-2 border-top border-bottom d-flex align-items-center"){ small(id="cant_prod_#<@@(product,'#sys_pk')>"){$"#<cantidad>"} }
                             button(type="button" class="btn border text-secondary fw-bold" onclick="cart.ActAdd(0,#<@@(product,'#sys_pk')>)"){$"+"}
                         }
                         button(class="btn btn-sm button_forms d-flex align-items-center gap-2" onclick="cart.AddCart(#<@@(product,'#sys_pk')>)") 
@@ -84,7 +114,8 @@ module "Product page"
                             $"#<@ICON_CART4>"
                             $"Agregar al carrito"
                         }
-                        button(class="btn btn-sm shadow-none border-secondary" title="Agregar a favoritos") {
+                        button(class="btn btn-sm shadow-none border-secondary" style="#<style>" onclick="#<ftext(action_fav)>" id="prod_fav_#<@@(product,'sys_pk')>" title="Agregar a favoritos") 
+                        {
                             $"#<@ICON_HEART>"
                         }
                     }
@@ -95,8 +126,15 @@ module "Product page"
                     p(class="text-secondary mb-2"){$"Línea: #<@@(product,'linea')>"}
                     p(class="text-secondary mb-2"){$"Marca: #<@@(product,'marca')>"}
                     p(class="text-secondary mb-2"){$"Departamento: #<@@(product,'departamento')>"}
+                    p(class="text-secondary mb-2"){$"Disponible: #<@@(product,'existencia')>"}
                 }
             }
+        }
+        script
+        {
+            $'
+            cart.url_ecom_fav="#<@ACT_FAV>";
+            '
         }
     }
 }

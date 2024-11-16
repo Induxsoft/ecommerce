@@ -45,7 +45,8 @@ module "General search"
             IFNULL(prod.precio109,0) precio109, IFNULL(prod.precio110,0) precio110, IFNULL(prod.precio111,0) precio111, IFNULL(prod.precio112,0) precio112,
             IFNULL(prod.precio113,0) precio113, IFNULL(prod.precio114,0) precio114, IFNULL(prod.precio115,0) precio115, IFNULL(prod.precio116,0) precio116,
             IFNULL(prod.precio117,0) precio117, IFNULL(prod.precio118,0) precio118, IFNULL(prod.precio119,0) precio119, IFNULL(prod.precio120,0) precio120,
-            IFNULL(lin.descripcion,'') linea, IFNULL(mar.descripcion,'') marca, IFNULL(dep.descripcion,'') departamento
+            IFNULL(lin.descripcion,'') linea, IFNULL(mar.descripcion,'') marca, IFNULL(dep.descripcion,'') departamento,
+            IFNULL(prod.existencia,0)existencia
         FROM producto prod
             LEFT JOIN linea lin ON prod.ilinea = lin.sys_pk
             LEFT JOIN marca mar ON prod.imarca = mar.sys_pk
@@ -62,6 +63,7 @@ module "General search"
                     ELSE true
                 END
             )
+            AND IFNULL(prod.existencia,0)>0
         ORDER BY #<order>
         LIMIT #<limit>;
     "
@@ -104,7 +106,19 @@ module "General search"
         if mod(total_lst, prodsxp) > 0 { last_page = last_page + 1 }
     }
 
+    ids=GetIds()
+    action_fav_ids="@"
+    if trim(ids)==""{action_fav_ids="location.href='"+UrlLogin()+"'"}
 
+    ref user=GetCurrentUser(_db)
+
+    new p_fav
+    {
+        @"user":@@(user,"#sys_pk")
+        @"tienda":@ID_TIENDA
+        @"producto": 0
+    }
+    exception{@current_error=last_error()}
     #$ div(class="container-sm p-5 bg-white mt-4")
     {
        #!
@@ -141,20 +155,32 @@ module "General search"
             #! go foreach.lobj(index:i, value:product) with(products)
             {
                 url_sku = get_url_ecommerce(@url_product, @@(product,'sys_pk'), @@(product,'descripcion'))
+                pfav=@false
+                action_fav=action_fav_ids
+                if action_fav=="@"
+                {
+                    p_fav<"producto">:@@(product,'#sys_pk')
+                    pfav=ProdFav(_db,p_fav)
 
-                #$ div(class="col-lg-4 col-sm-6 mb-4")
+                    action_fav="cart.ActFav(#<@@(product,'#sys_pk')>)"
+                    if pfav{action_fav="cart.ActFav(#<@@(product,'#sys_pk')>,'delete')"}
+                }
+                style=ifstr(pfav,'color:red','')
+                #$ div(class="col-lg-4 col-sm-6 mb-4" id="col_fav_#<@@(product,'sys_pk')>")
                 {
                     div(class="px-3 pb-5 pt-4 text-center h-100 border" style="background-color: #FFF;")
                     {
                         div(class="text-end")
                         {
-                            button(class="btn btn-sm shadow-none"){$"#<@ICON_HEART_24>"}
+                            button(class="btn btn-sm shadow-none" style="#<style>" onclick="#<ftext(action_fav)>" id="prod_fav_#<@@(product,'sys_pk')>"){$"#<@ICON_HEART_24>"}
                         }
                         a(href="#<url_sku>" class="text-decoration-none text-dark")
                         {
                             img(src="#<@@(product,'$url_img')>" onerror="this.src='/$/img/icons/default_product.png'" loading="lazy" style="height: 9rem; width: 9rem; object-fit: contain;" class="mb-3")
                             h6(class="m-0"){$"#<@@(product,'$descripcion')>"}
-                            small(class="text-secondary"){$"#<@@(product,'$codigo')>"}
+                            small(class="text-secondary "){$"#<@@(product,'$codigo')>"}
+                            small(class="text-secondary d-flex justify-content-center"){$"Disponible: #<trun(@@(product,'#existencia'))>"}
+                            
                             div(class="my-3")
                             {
                                 h6{$"$#<format(@@(product,'#_price'),'#,###.00')>"}
@@ -201,6 +227,12 @@ module "General search"
             '}
         }
 
+        script
+        {
+            $'
+            cart.url_ecom_fav="#<@ACT_FAV>";
+            '
+        }
         
     }
 }

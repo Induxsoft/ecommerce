@@ -18,8 +18,11 @@ module ""
     {
         id_carrito=GetIdCarrito()
         if id_carrito==""{return}
+        ref cart= ecommerce.cart.link(db,id_carrito,ids,idtienda,codcliente)
+        
+        exception{return @null}
 
-        return ecommerce.cart.link(db,id_carrito,ids,idtienda,codcliente)
+        return cart
     }
     SaveFormaEntrega::&db,url_redir
     {
@@ -38,7 +41,7 @@ module ""
         }
         if @@(_POST,"#direccion_existente") > 0{params<"direccion_existente">:@@(_POST,"#direccion_existente")}
 
-        if @@(_POST,"#fentrega")== @ecommerce.cart.forma_entega_domicilio
+        if @@(_POST,"#fentrega")== @ecommerce.cart.forma_entega_domicilio && @@(_POST,"#direccion_existente") < 1
         {
             new nueva_direccion
             {
@@ -63,11 +66,13 @@ module ""
     }
     SaveFormPago::&db,url_redir
     {
+        @ecommerce.cart.cliente =dbr.vars.get(db,"v12.ventas.cliente")
+
         _METHOD = @@(@http_context,"request/headers/REQUEST_METHOD")
         ref _GET = ifnull(@@(@http_context,"&request/get"),record.create())
         ref _POST = ifnull(@@(@http_context,"&request/post"),record.create())
 
-        if _METHOD != "POST" { return }
+        if _METHOD != "POST" { return @null}
 
         id_carrito=GetIdCarrito()
         if id_carrito==""{do rise_error(500,"No hay un carrito abierto")}
@@ -101,18 +106,73 @@ module ""
             }
         }
 
+        if isset("@current_error")
+        {
+            #$
+            div(class="alert alert-danger"){$'#<@current_error>'}
+        }
         #$
-        script(src="#<@js_crud_model>"){""}
-        script(src="#<@js_cart>"){""}
-
         script
         {
             $'
                 if(!cart)cart={};
                 cart.url_update_cart="#<@UPDATE_CART>";
-                cart.articulos=#<@@(data_cart,"#totales/articulos")>;
+                cart.articulos=#<@@(data_cart,"#totales/piezas")>;
             '
         }
         #!
+    }
+    #!
+    GetRecordList::&l,key,value
+    {
+        for i = 0; i < @count(l)
+        {
+            ref item=@item(l,i)
+            if @@(item,key)==value{return item}
+        }
+        return @null
+    }
+    #!
+    GetCurrentUser::&db
+    {
+        new params{@"ids":GetIds()}
+        return dbr.rec(db,"select u.sys_pk,u.userId, u.userName from tuser u inner join sys_session s on u.sys_pk=s.iuser where s.sys_guid=@ids;",params)
+    }
+    #!
+    ProdFav::&db,&p
+    {
+        ref prod_fav=dbr.rec(db,"select * from ecomm_fav where ref_user=@user and tienda=@tienda and ref_prdo=@producto",p)
+        return not(isnull(prod_fav))
+    }
+    GetCartOpenByUser::
+    {
+        if GetIdCarrito()!=""{return}
+
+        @ids=GetIds()
+        
+        if trim(@ids)!=""
+        {
+            ref db=get_database()
+            
+            if not(isnull(db))
+            {
+                ref user=GetCurrentUser(db)
+                if isnull(user){return}
+
+                new p
+                {
+                    @"user":@@(user,"#sys_pk")
+                    @"tienda":@ID_TIENDA
+                }
+                ref cart=dbr.rec(db,"SELECT f.sys_pk,f.sys_guid id_carrito,f.tienda 
+                FROM ecomm_cart f
+                WHERE f.tienda=@tienda 
+                AND f.ref_user=@user
+                AND IFNULL(status,0)= 0 ",p)
+                
+                if @@(cart,"$id_carrito")!=""{do SetIdCarrito(@@(cart,"$id_carrito"))}
+            }
+            exception{}
+        }
     }
 }

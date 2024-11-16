@@ -14,5 +14,21 @@
 
     /* right: 40px; */
     /* position: absolute; */
-
+}
+.focusCard
+{
+    border-color: var(--primary-color) !important;
+    border: 2px solid green !important;
+}
+.focusCard:hover
+{
+    border-color: green !important;
+}
+.address_card:hover 
+{
+    border-color: green !important;
+}
+.hover-red:hover
+{
+    color: red;
 }

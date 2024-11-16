@@ -139,4 +139,10 @@ model ""
         @"notas" memo
         @"cupon" string(45) // Código de descuento aplicado
     }
+    entity "ecomm_fav" : "TableModel"
+    {
+        @"ref_user" ref:"tuser" required
+        @"tienda" string(32) // Un identificador usado para distinguir carritos de varias tiendas 
+        @"ref_prdo" ref:"producto" required
+    }
 }

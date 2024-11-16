@@ -8,7 +8,14 @@ module ":ecommerce.cart"
     @ecommerce.cart.status_cerrado= 1
     @ecommerce.cart.impuesto= .16
     @ecommerce.cart.field_impuesto="impuesto1"
+    @ecommerce.cart.field_descuento="descuento1"
     @ecommerce.cart.decimalesEnImportes = 6
+    @ecommerce.cart.cliente ="(PG)"
+    @ecommerce.cart.venta_fpago = 1 //contado
+    @ecommerce.cart.cconsumo = 1 
+    @ecommerce.cart.divisa = 1 
+    @ecommerce.cart.documento = 2 //pedido
+    @ecommerce.cart.tipo_cambio = 1 //pedido
 
     AddFieldSystem::&data
     {
@@ -60,7 +67,8 @@ module ":ecommerce.cart"
                     unidad,
                     precio,
                     numprecio,
-                    descuentos,
+                    descuento1,
+                    descuento2,
                     impuesto1,
                     impuesto2,
                     impuesto3,
@@ -86,7 +94,7 @@ module ":ecommerce.cart"
             using totales
             {
                 @"subtotal":  @@(totales,"#subtotal") + ( @@(det,"#cantidad") * @@(det,"#precio") )
-                @"descuentos": @@(totales,"#descuentos") + @@(det,"#descuentos")
+                @"descuentos": @@(totales,"#descuentos") + @@(det,"#descuento1") + @@(det,"#descuento2")
                 @"impuestos": @@(totales,"#impuestos") + (@@(det,"#impuesto1") + @@(det,"#impuesto2") + @@(det,"#impuesto3") + @@(det,"#impuesto4") )
                 @"piezas": @@(totales,"#piezas") + @@(det,"#cantidad")
             }
@@ -208,7 +216,8 @@ module ":ecommerce.cart"
                                             unidad,
                                             precio,
                                             numprecio,
-                                            descuentos,
+                                            descuento1,
+                                            descuento2,
                                             impuesto1,
                                             impuesto2,
                                             impuesto3,
@@ -242,11 +251,12 @@ module ":ecommerce.cart"
                         @"unidad":@@(prod,"$unidad")
                         @"precio":precio
                         @"numprecio":parse.num(replace(ranydiffchars(@ecommerce.cart.field_precio,valid_chars,"?"),"?",""))
-                        @"descuentos": 0
                         @"impuesto1": @@(impuestos,"#impuesto1")
                         @"impuesto2": @@(impuestos,"#impuesto2")
                         @"impuesto3": @@(impuestos,"#impuesto3")
                         @"impuesto4": @@(impuestos,"#impuesto4")
+                        @"descuento1": 0
+		                @"descuento2": 0
                         @"notas":""
                     }
 
@@ -361,7 +371,9 @@ module ":ecommerce.cart"
                     fpago,
                     tienda
                     from ecomm_cart e
-                    where e.sys_guid=@id_carrito AND e.tienda=@tienda",p)
+                    where e.sys_guid=@id_carrito 
+                    AND e.tienda=@tienda
+                    AND ifnull(ref_user,0)=0",p)
         if isnull(cart){do rise_error(500,"No se encontró datos del carrito")}
 
         new ecomm_cart{}
@@ -395,8 +407,8 @@ module ":ecommerce.cart"
             @"descuento":(porcentaje / 100)
             @"cart":@@(cart,"#sys_pk")
         }
-        
-        return dbr.execute(db,"update ecomm_cart_det set descuentos=(cantidad * precio) - ((cantidad * precio) * @descuento) where ref_cart=@cart",p)
+        sql="update ecomm_cart_det set #<@ecommerce.cart.field_descuento>=(cantidad * precio) - ((cantidad * precio) * @descuento) where ref_cart=@cart"
+        return dbr.execute(db,ftext(sql),p)
     }
     deliveron::&db,&params
     {
@@ -492,10 +504,21 @@ module ":ecommerce.cart"
         {
             do dbr.begin(db)
                 
-                ref data_totales_venta=@@(detalle,"&totales")
+                ref data_totales_venta=@@(data,"&totales")
+                cliente=@@(cart,"#ref_cliente")
+                if cliente < 1
+                {
+                    p<"cod_cliente">:@ecommerce.cart.cliente
+                    cliente=dbr.num(db,"select sys_pk from cliente 
+                    where sys_pk=@cod_cliente
+                    or sys_guid=@cod_cliente
+                    or codigo=@cod_cliente limit 1",p)
+                }
+                if cliente < 1{do rise_error(500,"No se ha indicado un cliente para el pedido")}
+
                 using data_totales_venta
                 {
-                    @"ref_cliente":@@(cart,"#ref_cliente")
+                    @"ref_cliente":cliente
                 }
                 ref venta= insert_venta(db,data_totales_venta)
                 venta<"ialmacen">: dbr.num(db, "SELECT ialmacen FROM cconsumo WHERE sys_pk = @icconsumo", venta)
@@ -543,7 +566,7 @@ module ":ecommerce.cart"
             @"contabilizado": 0
             @"descuento1": 0
             @"descuento2": 0
-            @"formapago": 1                     // 0.cNo_aplica, 1.cContado, 2.cCrédito, 3.cFinanciado, 4.cFinanciado
+            @"formapago": @ecommerce.cart.venta_fpago                     // 0.cNo_aplica, 1.cContado, 2.cCrédito, 3.cFinanciado, 4.cFinanciado
             @"importeadicional": 0
             @"impuesto1": @@(data, "#impuesto1")
             @"impuesto2": @@(data, "#impuesto2")
@@ -551,7 +574,7 @@ module ":ecommerce.cart"
             @"impuesto4": @@(data, "#impuesto4")
             @"subtotal": @@(data,"#subtotal") 
             @"referencia": cut(dbr.str(db,"select replace(uuid(),'-','-')",@null),25)
-            @"documento": 2                    // 1.cCotización, 2.cPedido, 3.cRemisión, 4.cFactura, 5.cNota_de_crédito, 6.cTicket, 7.cGasto, 8.cNota_de_cargo ... 
+            @"documento": @ecommerce.cart.documento            // 1.cCotización, 2.cPedido, 3.cRemisión, 4.cFactura, 5.cNota_de_crédito, 6.cTicket, 7.cGasto, 8.cNota_de_cargo ... 
             @"statusadministrativo": 3          // 0.cNo_aplica, 1.cAbierto, 2.cCerrado, 3.cProcesado, 99.cCancelado
             @"statusentrega": 3                 // 0.cNo_aplica, 1.cPor_Entregar, 3.cEntregado 
             @"statusfacturacion": 1             // 0.cNo_Aplica, 1.cPor_facturar, 2.cParcialmente_facturado, 3.cFacturado
@@ -562,11 +585,11 @@ module ":ecommerce.cart"
             @"fentrega*": dt_now
             @"fliquidacion*": dt_now
             @"fultimocobro*": dt_now
-            @"tipocambio": 1 // Obtener de la divisa?
+            @"tipocambio": @ecommerce.cart.tipo_cambio
             @"vencimiento*": dt_now
-            @"icconsumo": 1
+            @"icconsumo": @ecommerce.cart.cconsumo
             @"icliente": @@(data,"#ref_cliente")
-            @"idivisa": 1 // Obtener desde el cliente?
+            @"idivisa": @ecommerce.cart.divisa
             @"ifolio": @@(dfolio, "sys_pk")
         }
 
@@ -582,9 +605,9 @@ module ":ecommerce.cart"
             @"sys_timestamp*": now
             @"sys_dtcreated*": now
 
-            @"cantidad": 1
-            @"descuento1": 0
-            @"descuento2": 0
+            @"cantidad": @@(data,"#cantidad")
+            @"descuento1": @@(data,"#descuento1")
+            @"descuento2": @@(data,"#descuento2")
             @"factor": 1
             @"impuesto1": @@(data, "#impuesto1")
             @"impuesto2": @@(data, "#impuesto2")

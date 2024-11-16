@@ -1,0 +1,88 @@
+#include "dkli.dkh"
+#pattern function "function '$name' ()"
+#!
+module "service"
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    #include "webcl.dkh"
+    #include "dbr.dkh"
+    #include "ecommerce/_lib/lib.dk"
+    #include "ecommerce/_lib/config.dk"
+    #include "website.dkl"
+
+    @http_context<"response/headers/Access-Control-Allow-Origin">:"*"
+    @http_context<"response/headers/Access-Control-Allow-Headers">:"*"
+    @http_context<"response/headers/Access-Control-Allow-Methods">:"*"
+
+    _METHOD = @@(@http_context,"request/headers/REQUEST_METHOD")
+    if _METHOD == "OPTIONS" { return }
+
+    new response { @"success" : @true }
+
+    function SetResponse(&response)
+    {
+        @http_context<"response/headers/content-type"> : "application/json;charset=utf-8"
+        @http_context<"response/output"> : "text"
+        @http_context<"response/text"> : to.json(response)
+    }
+    ref @database=get_database()
+    if isnull(@database){do rise_error(500,"La base de datos no puede ser nula")}
+    ref _GET = ifnull(@@(@http_context,"&request/get"),record.create())
+    ref _POST = ifnull(@@(@http_context,"&request/post"),record.create())
+
+    if list.count(list.create_from_fields(_POST)) < 1 
+    {
+        ref _POST = from.json(field.dstr(@http_context,"request/post_string","{}"))
+    }
+    using _GET{@"uid":@@(@http_context, "session/user/uid")}
+    user=dbr.num(@database,"select sys_pk from tuser where userid=@uid",_GET)
+    _GET<"user">:user
+    using _GET
+    {
+        @"user":user
+        @"tienda":@ID_TIENDA
+        @"producto":@@(_POST,"#producto")
+    }
+    switch @@(_POST,"$action")
+    {
+        case "add"
+        {
+            new ecomm_fav
+            {
+                @"sys_guid":uuid()
+                @"sys_dtcreated*":now()
+                @"sys_timestamp*":now()
+                @"sys_recver": 0
+                @"ref_user":user
+                @"tienda":@ID_TIENDA
+                @"ref_prdo":@@(_POST,"#producto")
+            }
+            do dbr.insert(@database,"ecomm_fav",ecomm_fav)
+        }
+        case "delete"
+        {
+            res= dbr.execute(@database,"delete from ecomm_fav where ref_user=@user and tienda=@tienda and ref_prdo=@producto",_GET)
+            if not(res){do rise_error(500,"No se logró quitar de favoritos")}
+        }
+        default
+        {
+            do rise_error(500,"Acción no implementada")
+        }
+    }
+
+    
+
+    do SetResponse(response)
+    exception
+    {
+        do errordet(@false)
+        using response
+        {
+            @"success": @false
+            @"code": last_error_code()
+            @"message": last_error()
+        }
+        do SetResponse(response)
+    }
+}

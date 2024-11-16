@@ -5,8 +5,12 @@ module "Lines"
     ref db = get_database()
     ref lines = dbr.list(db, "SELECT sys_pk, codigo, descripcion FROM linea ORDER BY descripcion;", @null)
 
+    exception{@current_error=last_error()}
     #$ div(class="container-sm p-5 bg-white mt-4")
     {
+        #!
+        do ScritGlobal(db,@null)
+        #$
         div(class="mb-4")
         {
             h3{$"Líneas"}

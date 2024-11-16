@@ -49,9 +49,12 @@ module "Aply password change"
     }
     
     input_class = "form-control rounded-0 shadow-none mb-2 mt-1"
-    
+    exception{@current_error=last_error()}
     #$ div
     {
+        #!
+        do ScritGlobal(db,@null)
+        #$
         div(class="alert alert-danger #<ifstr(message == '', 'd-none', '')>"){ $"#<message>" }
 
         div(class="d-flex justify-content-center align-items-center mt-5")

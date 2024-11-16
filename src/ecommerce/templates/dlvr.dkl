@@ -2,17 +2,40 @@
 #!
 module ""
 {
+    #include "../_lib/ui.dk"
+    new params
+    {
+        @"hide_delete":@true
+    }
+    
+    funct_addres::&laddress
+    {
+        #$
+        div(class="mb-2")
+        {
+            div
+            {
+                button(type="button" class="btn btn-sm btn-primary" onclick="address.open_address_modal();cart.SelectMetEntregaDom();"){"Agregar domicilio"}
+            }
+        }
+        #!
+    }
+    
+    point funct_addres to funct_addres
+    
     ref db=get_database()
     ref forma_entrega=dbr.list(db,"select * from ecomm_cart_fentrega where id in(0,1)",@null)
 
     do SaveFormaEntrega(db,@url_forma_pago)
-
+    exception{@current_error=last_error()}
     #$
     div(class="container")
     {
-        script(src="#<@js_crud_model>"){""}
-        script(src="#<@js_cart>"){""}
-
+        #!
+        do ScritGlobal(db,@null)
+        #$
+        script(src="#<@js_ecommerce_utils>"){$""}
+        script(src="#<@js_address>"){$""}
         form(action="" method="POST")
         {
             div(class="card")
@@ -22,7 +45,7 @@ module ""
                     h5{"Forma de entrega"}
                     div(class="d-flex justify-content-end")
                     {
-                        button(class="btn btn-sm btn-primary")
+                        button(class="btn btn-sm btn-primary" id="mod_next")
                         {
                             "Continuar"
                             $'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="16" fill="currentColor" class="bi bi-arrow-right" viewBox="0 0 16 16">
@@ -34,7 +57,7 @@ module ""
                 div(class="card-body")
                 {
                     div(id="f-entrega")
-                    {
+                    {$""
                         #!
                         for i = 0; i < @count(forma_entrega)
                         {
@@ -42,15 +65,33 @@ module ""
                             #$
                             label(class="d-flex")
                             {
-                                input(type="radio" required="true" class="induxsoft-form-control" id="fentrega" name="fentrega" value="#<@@(fentrega,'#id')>")
-                                $"#<@@(fentrega,'$const')>"
+                                input(type="radio" required="true" onchange="cart.radioChange(event);" class="induxsoft-form-control me-2" id="fentrega" name="fentrega" value="#<@@(fentrega,'#id')>")
+                                $" #<@@(fentrega,'$const')>"
                             }
                         }
+                        input(type="hidden" class="induxsoft-form-control" id="direccion_existente" name="direccion_existente" value="")
                     }
-                    
+                    hr{""}
+                    div(id="mod-domicilio" class="d-none")
+                    {
+                        h5{"Elige o agrega un domicilio"}
+                        #!
+
+                        do ui.CreateCardAddress(db,params,funct_addres)
+                        #$
+                    }
                 }   
             }
         }
-        
+        #!
+        do ui.CreateModalAddress(db)
+        #$
+        script
+        {
+            $'
+            cart.from_addres=true;
+            cart.url_add_adress="#<@ADD_ADDRES>";
+            '
+        }
     }
 }

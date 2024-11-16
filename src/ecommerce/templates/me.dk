@@ -69,12 +69,17 @@ module "Me (profile info)"
         @http_context<"response/headers/location">: current_url(@false,@true)
     }
 
-    exception { 
+    exception 
+    { 
         error_message = last_error() 
+        @current_error=error_message
     }
 
     #$ div(class="container-sm")
     {
+        #!
+        do ScritGlobal(db,@null)
+        #$
         div(class="alert alert-danger #<ifstr(error_message == '', 'd-none', '')>"){ $"#<error_message>" }
         
         form(action="." method="POST" class="p-5 bg-white mt-4")

@@ -1,0 +1,88 @@
+#include "dkli.dkh"
+#!
+module ""
+{
+    ref db=get_database()
+    @ecommerce.cart.decimalesEnImportes = parse.num(dbr.vars.getd(db,"FXCA001","6"))
+    
+    ref compras=dbr.list(db,"SELECT 
+                                ec.sys_pk,
+                                ec.sys_guid id_carrito,
+                                ec.tienda id_tienda,
+                                DATE_FORMAT(ec.sys_dtcreated,'%Y-%m-%d')fecha,
+                                v.referencia,
+                                s.const text_status,
+                                (
+                                    SELECT COUNT(*) FROM ecomm_cart_det d WHERE d.ref_cart=ec.sys_pk
+                                )articulos,
+                                (
+                                    SELECT SUM(((d.precio * d.cantidad) + d.impuesto1 + d.impuesto2 + d.impuesto3 + d.impuesto4) - (d.descuento1  + d.descuento2)) FROM ecomm_cart_det d WHERE d.ref_cart=ec.sys_pk
+                                )total,
+                                p.const fpago,
+                                e.const fentrega,
+                                CONCAT_WS(' - ',c.codigo,c.nombre)cliente
+                            FROM ecomm_cart ec
+                            LEFT JOIN cliente c ON ec.ref_cliente=c.sys_pk
+                            LEFT JOIN tuser u ON ec.ref_user=u.sys_pk
+                            INNER JOIN venta v ON ec.pedido=v.sys_pk
+                            INNER JOIN ecomm_cart_fpago p ON ec.fpago=p.id
+                            INNER JOIN ecomm_cart_fentrega e ON ec.entrega=e.id
+                            INNER JOIN ecomm_cart_status s ON ec.`status`=s.id 
+                            WHERE s.id=1
+                            ORDER BY ec.sys_dtcreated DESC
+                            LIMIT 100",@null)
+    #$ div(class="container-sm p-5 bg-white mt-4")
+    {
+        #!
+        do ScritGlobal(db,@null)
+        #$
+        div(class="card")
+        {
+            div(class="card-headers")
+            {
+                h5(class="text-center"){"Mis compras"}
+            }
+            div(class="card-body")
+            {
+                table(class="table")
+                {
+                    thead
+                    {
+                        tr
+                        {
+                            td{"Fecha"}
+                            td{"Referencia"}
+                            td{"Forma de pago"}
+                            td{"Forma de entrega"}
+                            td{"Total"}
+                            td{"Articulos"}
+                            td{""}
+                        }
+                    }
+                    tbody
+                    {$""
+                        #!
+                        for i = 0; i < @count(compras)
+                        {
+                            ref compra=@item(compras,i)
+                            #$
+                            tr
+                            {
+                                td{"#<@@(compra,'$fecha')>"}
+                                td{"#<@@(compra,'$referencia')>"}
+                                td{"#<@@(compra,'$fpago')>"}
+                                td{"#<@@(compra,'$fentrega')>"}
+                                td{"#<round(@@(compra,'$total'),@ecommerce.cart.decimalesEnImportes)>"}
+                                td{"#<@@(compra,'$articulos')>"}
+                                td
+                                {
+                                    a(href="#<replace(@url_det_order,'@orden',@@(compra,'$id_carrito'))>" class="btn btn-sm btn-primary"){"Ver detalle"}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

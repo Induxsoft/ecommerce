@@ -4,15 +4,16 @@ module ""
 {
     ref db=get_database()
     ref forma_pago=dbr.list(db,"select * from ecomm_cart_fpago where id in(1,2,3)",@null)
+    
+    if not(isnull(SaveFormPago(db,"/"))){return}
 
-    do SaveFormPago(db,"/")
-
+    exception{@current_error=last_error()}
     #$
     div(class="container")
     {
-        script(src="#<@js_crud_model>"){""}
-        script(src="#<@js_cart>"){""}
-
+        #!
+        do ScritGlobal(db,@null)
+        #$
         form(action="" method="POST")
         {
             div(class="card")
@@ -24,7 +25,7 @@ module ""
                     {
                         button(class="btn btn-sm btn-primary")
                         {
-                            "Continuar"
+                            "Comprar"
                             $'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="16" fill="currentColor" class="bi bi-arrow-right" viewBox="0 0 16 16">
                             <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8"/>
                             </svg>'
@@ -42,7 +43,7 @@ module ""
                             #$
                             label(class="d-flex")
                             {
-                                input(type="radio" class="induxsoft-form-control" id="fpago" name="fpago" value="#<@@(fpago,'#id')>")
+                                input(type="radio" class="induxsoft-form-control me-2" id="fpago" name="fpago" value="#<@@(fpago,'#id')>")
                                 $"#<@@(fpago,'$const')>"
                             }
                         }

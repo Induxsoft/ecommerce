@@ -8,11 +8,10 @@ module "login"
     message = ""
     ref get = @@(@http_context, "&request/get")
     ref pos = ifnull(@@(@http_context, "&request/post"), record.create())
+    ref db = get_database()
 
     if toupper(@@(@http_context, "request/headers/REQUEST_METHOD")) == "POST"
     {        
-        ref db = get_database()
-
         // Recuperar sesión
         sql = "
             SELECT IFNULL(s.sys_guid,'')
@@ -68,6 +67,9 @@ module "login"
 
     #$ div
     {
+        #!
+        do ScritGlobal(db,@null)
+        #$
         div(class="alert alert-danger #<ifstr(message == '', 'd-none', '')>"){ $"#<message>" }
 
         div(class="d-flex justify-content-center align-items-center mt-5")

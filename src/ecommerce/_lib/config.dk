@@ -11,9 +11,11 @@ module
 	@url_address = "/-/address/"
 	@url_search = "/-/r/"
 	@url_product = "/-/sku/"
-	@url_forma_entrega="/-/dlvr.dkl"
-	@url_forma_pago="/-/pay.dkl"
+	@url_forma_entrega="/-/dlvr/"
+	@url_forma_pago="/-/pay/"
+	@url_det_order="/-/det-order/@orden/"
 
+	@redir_signup_login=@false
 	@req_pwd_max_days = 7	// Vigencia en días de una solicitud de cambio de contraseña
 
 	// Envio de correos
@@ -32,6 +34,8 @@ module
 
 	//url servicios
 	@UPDATE_CART="/!/update-cart.dkl"
+	@ADD_ADDRES="/!/add-addres.dkl"
+	@ACT_FAV="/!/act-fav.dkl"
 
 	//var eco
 	@ecommerce.cart.forma_entega_domicilio= 0

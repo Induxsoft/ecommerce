@@ -4,6 +4,7 @@ module "Controller configs"
 {
 	#include "functions.dkh"
 	#include "serialize.dkh"
+	#include "uielements.dkl"
 	#include "dbr.dkh"
 	#include "dbr.vars.dkl"
 	#include "dbr.folios.dkl"
@@ -43,16 +44,21 @@ module "Controller configs"
 		"access":[{"workspace":"'+@ws+'"}]
 	}'
 
-	get_site_config::
-    {
-        f = path.concat("_config",@@(@http_context,"$request/headers/HTTP_HOST")+".json")
-        if file.exists(f) 
-        {
-            return from.json(file.rtext(f))
-            exception{}
-        }
-        return record.create()
-    }
+	if not(field.exist(@@(@http_context,"&session"),"resource")) { @http_context<"session/resource*">:record.create() }
+	if not(field.exist(@@(@http_context,"&session/resource"),"properties")) { @http_context<"session/resource/properties*">:record.create() }
+	if not(field.exist(@@(@http_context,"&session/resource/properties"),"web_meta_tags")) { @http_context<"session/resource/properties/web_meta_tags*">:record.create() }
+	if not(field.exist(@@(@http_context,"&session/resource/properties/web_meta_tags"),"web_page")){@http_context<"session/resource/properties/web_meta_tags/web_page*">:record.create()}
+	if not(field.exist(@@(@http_context,"&session/resource/properties"),"web_page")){@http_context<"session/resource/properties/web_page*">:record.create()}
+	// <script type="text/javascript" src="/$/sigesac/js/bootbox.js"></script>
+	scripts='
+		<script src="/$/js/induxsoft.crudl.model.js"></script>		
+		<script src="/$/js/cart.js"></script>
+		<script src="https://mdbcdn.b-cdn.net/wp-content/themes/mdbootstrap4/docs-app/js/dist/main.min.js"></script>
+
+		<link href="/$/css/ecommerce.css" rel="stylesheet">
+		<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+	'
+	@http_context<"session/resource/properties/web_page/end_head">:scripts
 
     ref confg = get_site_config()
 	def_tmplt = @@(confg,"$default_page_template")
@@ -103,6 +109,9 @@ module "Controller configs"
 		return template
 	}
 
+	do GetCartOpenByUser()
+	
 	include search_template(def_tmplt)
 	// #include "crudl/controller.dkl"
+	
 }

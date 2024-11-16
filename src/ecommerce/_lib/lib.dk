@@ -42,7 +42,7 @@ module "lib"
     }
     GetIds::
     {
-        return @@(@http_context, "session/user/ids")
+        return @@(@http_context, "$session/user/ids")
     }   
     required_session::goback
     {
@@ -52,6 +52,14 @@ module "lib"
             if goback { url = url + "?exit_url_encode=" + url_encode(current_url(@false, @true)) }
             @http_context<"response/headers/location">: url
         }
+    }
+    UrlLogin::
+    {
+        uri_current=current_url(@false, @true)
+        uri_current=uri_current + ifstr(contains(uri_current,"?"),"&ids=@ids","?ids=@ids")
+
+        url_redi=ifstr(@redir_signup_login,@url_signup,@url_login)
+        return path.concat(url_redi,"?exit_url_encode="+url_encode(uri_current))
     }
     parse_url_session::&db, url
     {
@@ -92,9 +100,16 @@ module "lib"
         desc = replace(desc,"í","i")
         desc = replace(desc,"ó","o")
         desc = replace(desc,"ú","u")
+        
+        if firstChar(desc)=="-"{desc=left(desc,1)}
 
         url = url + "--" + str(entity_id) + "-" + str(desc)
         return url
+    }
+    firstChar::s
+    {
+        if s=="" { return "" }
+        return substring(s,0,1)
     }
     get_entity_id::
     {
@@ -149,4 +164,5 @@ module "lib"
         }
         return _img
     }
+    
 }
