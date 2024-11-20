@@ -53,16 +53,31 @@ module "Controller configs"
 	scripts='
 		<script src="/$/js/induxsoft.crudl.model.js"></script>		
 		<script src="/$/js/cart.js"></script>
+		<script src="/$/js/utils.js"></script>
 
 		<link href="/$/css/ecommerce.css" rel="stylesheet">
 	'
-	@http_context<"session/resource/properties/web_page/end_head">:scripts
-
+	//obtener la configuración del archivo {host}.json
     ref confg = get_site_config()
 	def_tmplt = @@(confg,"$default_page_template")
 
 	@http_context<"cconsumo_price">: @@(confg,"$cconsumo_price")
+	//obtiene el carrito abierto del usuario que inicio sesión
+	do GetCartOpenByUser()
 	
+	@http_context<"template_filter_start">:GenHTMLMode(confg)
+	@http_context<"template_filter_end">:GenBTn(confg)
+
+	if @@(confg,"#search_bar_mode")== 1
+	{
+		scripts= scripts + '<script src="/$/js/cars.js"></script>
+		<script>
+				cars.url_filter="'+@CARS_FILTER+'"
+		</script>
+		'
+	}
+	
+	@http_context<"session/resource/properties/web_page/end_head">:scripts
 	search_template::def_tmplt
 	{
 		if def_tmplt == "" { def_tmplt = "_storefront.dk" }
@@ -106,11 +121,6 @@ module "Controller configs"
 
 		return template
 	}
-	confg<"search_bar_mode">: 1
-	do GetCartOpenByUser()
-	
-	@http_context<"template_filter">:GenHTMLMode(confg)
-	@http_context<"template_filter_after_search">:GenBTn(confg)
 
 	include search_template(def_tmplt)
 	// #include "crudl/controller.dkl"

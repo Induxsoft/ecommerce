@@ -82,7 +82,7 @@ module "Me (profile info)"
         #$
         div(class="alert alert-danger #<ifstr(error_message == '', 'd-none', '')>"){ $"#<error_message>" }
         
-        form(action="." method="POST" class="p-5 bg-white mt-4")
+        form(action="." method="POST" class="p-5 bg-white mt-4" onsubmit="return ValidateForm();")
         {
             h2(class="mb-5 title_forms"){$"Mi perfil"}
 
@@ -137,18 +137,37 @@ module "Me (profile info)"
                     div(class="row align-items-center mt-3")
                     {
                         div(class="col-md-2"){ label(class="form-label m-0"){$"Nueva contraseña"} }
-                        div(class="col-xl-4"){ input(name="pwd" type="password" placeholder="Nueva contraseña" class="form-control form-control-sm shadow-none") }
+                        div(class="col-xl-4"){ input(name="pwd" id="pwd" type="password" placeholder="*****" class="form-control form-control-sm shadow-none") }
+                    }
+                    div(class="row align-items-center mt-3")
+                    {
+                        div(class="col-md-2"){ label(class="form-label m-0"){$"Confirmar contraseña"} }
+                        div(class="col-xl-4"){ input(id="cpwd" type="password" placeholder="*****" class="form-control form-control-sm shadow-none") }
                     }
                 }
-                // div(class="row align-items-center mb-3")
-                // {
-                //     div(class="col-md-2"){ label(class="form-label m-0"){$"Cambiar contraseña"} }
-                //     div(class="col-xl-4"){ input(name="pwd" type="password" placeholder="Nueva contraseña" class="form-control form-control-sm shadow-none") }
-                // }
             }
             div(class="d-flex justify-content-end")
             {
                 button(class="btn button_forms"){$"Guardar"}
+            }
+            script
+            {
+                $'
+                    function ValidateForm()
+                    {
+                        let pwd=document.getElementById("pwd");
+                        let cpwd=document.getElementById("cpwd");
+
+                        if(pwd.value.trim()!="" && pwd.value.trim()!=cpwd.value.trim())
+                        {   
+                            alert("Contraseñas no coinciden");
+                            pwd.focus();
+                            return false;
+                        }
+
+                        return true;
+                    }
+                '
             }
         }
     }

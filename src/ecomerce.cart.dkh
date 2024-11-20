@@ -10,10 +10,12 @@ module ":ecommerce.cart"
     @ecommerce.cart.decimalesEnImportes = 6
     @ecommerce.cart.cliente ="(PG)"
     @ecommerce.cart.venta_fpago = 1 //contado
-    @ecommerce.cart.cconsumo = 1 
-    @ecommerce.cart.divisa = 1 
-    @ecommerce.cart.documento = 2 //bLOCK DE DOCUMENTOS pedido
-    @ecommerce.cart.tipo_cambio = 1 //
+    @ecommerce.cart.cconsumo = "0001" 
+    @ecommerce.cart.divisa = "MXN"
+    @ecommerce.cart.documento = 2 //pedido // var para venta y query para obtener la pk del block documento
+    @ecommerce.cart.serie="P" // serie
+    @ecommerce.cart.tipo_cambio = 0 //si el tipo de cambio es 0, se va obtener de la divisa
+    @ecommerce.cart.a_domicilio = 0
 
     AddFieldSystem::&data
     {
@@ -483,14 +485,23 @@ module ":ecommerce.cart"
         {
             @"id_carrito":id_carrito
         }
-        ref cart=dbr.rec(db,"select sys_pk,
+        ref cart=dbr.rec(db,"select 
+                    sys_pk,
+                    sys_guid id_carrito,
                     ref_user,
                     ref_cliente,
                     status,
                     pedido,
                     fpago,
-                    tienda
+                    tienda,
+                    e.entrega,
+                    ec.const fentrega,
+                    ef.const f_pago,
+                    e.id_pago,
+                    e.enviara
                     from ecomm_cart e
+                    INNER join ecomm_cart_fentrega ec ON e.entrega=ec.id
+                    INNER JOIN ecomm_cart_fpago ef ON e.fpago=ef.id
                     where e.sys_guid=@id_carrito 
                     and status=1",p)
         if isnull(cart){do rise_error(500,"No se encontró datos del carrito")}
@@ -517,6 +528,36 @@ module ":ecommerce.cart"
 
                 using data_totales_venta{@"ref_cliente":cliente}
 
+                notas="VENTA EN LÍNEA\r\n"
+                notas=notas + "*********************\r\n"
+                notas=notas + "Id de tienda: "+@@(cart,'$tienda')+"\r\n"
+                notas=notas + "Id de carrito: "+@@(cart,'$id_carrito')+"\r\n"
+                notas=notas + "Forma de pago: "+@@(cart,'$f_pago')+"\r\n"
+                notas=notas + ifstr(@@(cart,'#fpago')==@ecommerce.cart.forma_pago_online,'ID DEL PAGO: '+ @@(cart,'$id_pago'),'')+"\r\n"
+                notas=notas + "Forma de entrega: "+@@(cart,'$fentrega')
+                        
+                if @@(cart,"#entrega")== @ecommerce.cart.a_domicilio
+                {
+                    p<"addres">:@@(cart,"#enviara")
+
+                    ref addres=dbr.rec(db,"SELECT a.label,a.addr_l1,a.addr_l2,a.addr_l3,a.phone,a.recip_name,a.zip,p.codigo,p.nombre,a.notes 
+                        FROM ecom_usr_adr a 
+                        INNER JOIN pais p ON a.country=p.sys_pk
+                        WHERE a.sys_pk=@addres",p)
+
+                    notas=notas + "\r\n"
+                    notas=notas + @@(addres,"$label") + "\r\n"
+                    notas=notas + "Dirección: "+    @@(addres,"$addr_l1") + "\r\n"
+                    notas=notas + "Colonia: "+      @@(addres,"$addr_l2") + "\r\n"
+                    notas=notas + @@(addres,"$addr_l3") + "\r\n"
+                    notas=notas + "TEL. "+@@(addres,"$phone") + "\r\n"
+                    notas=notas + "Recibe: "+@@(addres,"$recip_name") + "\r\n"
+                    notas=notas + @@(addres,"$codigo")+" "+@@(addres,"$nombre")+" "+@@(addres,"$zip")  + "\r\n"
+                    notas=notas + "Referencia: "+ @@(addres,"$notes") + "\r\n"
+                }
+                
+                data_totales_venta<"notas">:ftext(notas)
+                
                 ref venta= insert_venta(db,data_totales_venta)
                 venta<"ialmacen">: dbr.num(db, "SELECT ialmacen FROM cconsumo WHERE sys_pk = @icconsumo", venta)
 
@@ -572,17 +613,40 @@ module ":ecommerce.cart"
     insert_venta::&db, &data
     {
         ref dt_now = dbr.sql("NOW()")
-        ref dfolio = get_folio(db, @ecommerce.cart.documento)
+        new p
+        {
+            @"documento":@ecommerce.cart.documento
+            @"serie":@ecommerce.cart.serie
+            @"cc":@ecommerce.cart.cconsumo
+            @"div":@ecommerce.cart.divisa
+        }
+        pk_cc=dbr.num(db,"select sys_pk from cconsumo where codigo=@cc",p)
+        if pk_cc < 1{do rise_error(500,"No se econtró el centro de consumo indicado")}
+
+        pk_divisa=dbr.num(db,"select sys_pk from divisa where codigo=@div",p)
+        if pk_divisa < 1{do rise_error(500,"No se encontró la divisa indicado")}
+
+        block_documento=dbr.num(db,"select sys_pk from blockdocumentos b 
+                        where b.documento=@documento AND serie=@serie",p)
+
+        if block_documento< 1{do rise_error(500,"No se encontró la serie del documento indicado")}
+
+        ref dfolio = get_folio(db,block_documento)
 
         ref_size=dbr.vars.getd(db,"ventas_fix_ref_size",6)
 
-        serie=dbr.str(db,"SELECT bd.serie FROM foliosdocumentos fd
-                    INNER JOIN blockdocumentos bd ON fd.block=bd.sys_pk
-                    WHERE fd.sys_pk=@sys_pk",dfolio)
-        if trim(serie)==""{serie="P"}
-
+        serie=@@(p,"$serie")
         referencia=serie+ padleft(str(@@(dfolio,"#new_folio")),ref_size,"0")
 
+        p<"pk_divisa">:pk_divisa
+
+        tcambio=@ecommerce.cart.tipo_cambio
+
+        if tcambio== 0
+        {
+            tcambio=dbr.num(db,"SELECT d.tcambio FROM divisa d
+            WHERE d.sys_pk=@pk_divisa",p)
+        }
         new venta
         {
             @"sys_timestamp*": dt_now
@@ -594,7 +658,7 @@ module ":ecommerce.cart"
             @"contabilizado": 0
             @"descuento1": @@(data, "#descuento1")
             @"descuento2": @@(data, "#descuento2")
-            @"formapago": @ecommerce.cart.venta_fpago                     // 0.cNo_aplica, 1.cContado, 2.cCrédito, 3.cFinanciado, 4.cFinanciado
+            @"formapago": @ecommerce.cart.venta_fpago         // 0.cNo_aplica, 1.cContado, 2.cCrédito, 3.cFinanciado, 4.cFinanciado
             @"importeadicional": 0
             @"impuesto1": @@(data, "#impuesto1")
             @"impuesto2": @@(data, "#impuesto2")
@@ -602,9 +666,9 @@ module ":ecommerce.cart"
             @"impuesto4": @@(data, "#impuesto4")
             @"subtotal": @@(data,"#subtotal") 
             @"referencia": referencia
-            @"documento": @ecommerce.cart.documento            // 1.cCotización, 2.cPedido, 3.cRemisión, 4.cFactura, 5.cNota_de_crédito, 6.cTicket, 7.cGasto, 8.cNota_de_cargo ... 
+            @"documento": @ecommerce.cart.documento    // 1.cCotización, 2.cPedido, 3.cRemisión, 4.cFactura, 5.cNota_de_crédito, 6.cTicket, 7.cGasto, 8.cNota_de_cargo ... 
             @"statusadministrativo": 3          // 0.cNo_aplica, 1.cAbierto, 2.cCerrado, 3.cProcesado, 99.cCancelado
-            @"statusentrega": 3                 // 0.cNo_aplica, 1.cPor_Entregar, 3.cEntregado 
+            @"statusentrega": 1                // 0.cNo_aplica, 1.cPor_Entregar, 3.cEntregado 
             @"statusfacturacion": 1             // 0.cNo_Aplica, 1.cPor_facturar, 2.cParcialmente_facturado, 3.cFacturado
             @"statusfinanciero": 2              // 0.cNo_aplica, 1.cCon_adeudo, 2.cSaldado, 3.cConsignado
             @"tipodomicilio": 0
@@ -613,12 +677,13 @@ module ":ecommerce.cart"
             @"fentrega*": dt_now
             @"fliquidacion*": dt_now
             @"fultimocobro*": dt_now
-            @"tipocambio": @ecommerce.cart.tipo_cambio
+            @"tipocambio": tcambio
             @"vencimiento*": dt_now
-            @"icconsumo": @ecommerce.cart.cconsumo
+            @"icconsumo": pk_cc
             @"icliente": @@(data,"#ref_cliente")
-            @"idivisa": @ecommerce.cart.divisa
+            @"idivisa": pk_divisa
             @"ifolio": @@(dfolio, "sys_pk")
+            @"notas":@@(data,"$notas")
         }
 
         do dbr.insert(db, "venta", venta)

@@ -23,6 +23,10 @@ module "General search"
 		@"q": @@(get,"$q")  //cadena de filtro like, si se omite se asume %
 		@"p": @@(get,"#p")  //número de página a mostrar (si se omite, se asume 1)
         @"s": @@(get,"$s")  //ordenación (mp = mayor precio, bp = menor precio, k = por código, kd = código descendente,...)
+
+        @"a_mr":trim(@@(get,"$a-mr"))
+        @"a_md":trim(@@(get,"$a-md"))
+        @"a_vr":trim(@@(get,"$a-vr"))
 	}
 
     limit = str((prodsxp * @@(filters,"#p")) - prodsxp) + "," + str(prodsxp)
@@ -39,7 +43,7 @@ module "General search"
     }
     
     sql = "
-        SELECT prod.sys_pk, prod.codigo, prod.descripcion, prod.costoultimo, prod.impuestos,
+        SELECT DISTINCT prod.sys_pk, prod.codigo, prod.descripcion, prod.costoultimo, prod.impuestos,
             IFNULL(prod.precio1,0) precio1, IFNULL(prod.precio2,0) precio2, IFNULL(prod.precio3,0) precio3, IFNULL(prod.precio4,0) precio4,
             IFNULL(prod.precio5,0) precio5, IFNULL(prod.precio106,0) precio106, IFNULL(prod.precio107,0) precio107, IFNULL(prod.precio108,0) precio108,
             IFNULL(prod.precio109,0) precio109, IFNULL(prod.precio110,0) precio110, IFNULL(prod.precio111,0) precio111, IFNULL(prod.precio112,0) precio112,
@@ -51,6 +55,7 @@ module "General search"
             LEFT JOIN linea lin ON prod.ilinea = lin.sys_pk
             LEFT JOIN marca mar ON prod.imarca = mar.sys_pk
             LEFT JOIN departamento dep ON prod.idepartamento = dep.sys_pk
+            #<@JOIN_CARS>
         WHERE IFNULL(prod.sys_info, '') <> 'hidden'
             AND IFNULL(prod.sys_deleted, 0) = 0
             AND IF(IFNULL(@q,'%') = '%', true, prod.codigo LIKE CONCAT('%',@q,'%') || prod.descripcion LIKE CONCAT('%',@q,'%'))
@@ -64,10 +69,26 @@ module "General search"
                 END
             )
             AND IFNULL(prod.existencia,0)>0
-            AND prod.iclase > 1 and prod.iclase < 7
+            AND (prod.iclase > 1 and prod.iclase < 7)
+            #<@CONDITIONAL_CARS>
         ORDER BY #<order>
         LIMIT #<limit>;
     "
+    @JOIN_CARS=""
+    @CONDITIONAL_CARS=""
+
+    if trim(@@(filters,"$a_mr"))!=""
+    {
+        @JOIN_CARS="INNER JOIN car_compatible crc ON prod.sys_pk=crc.ref_producto
+                    INNER JOIN car_modelo crm ON crc.ref_modelo=crm.sys_pk
+                    INNER JOIN car_version crv ON crc.ref_version=crv.sys_pk"
+
+        @CONDITIONAL_CARS="AND if(ifnull(@a_mr,'*')='*',true,crm.ref_car_marca=@a_mr)
+                        AND if(ifnull(@a_md,'*')='*',true,crm.sys_pk=@a_md)
+                        AND if(ifnull(@a_vr,'*')='*',true,crv.sys_pk=@a_vr)
+                        "
+    }
+
     ref products = dbr.list(_db, ftext(sql), filters)
 
     // =============== IMAGENES DE PRODUCTOS
@@ -232,6 +253,7 @@ module "General search"
         {
             $'
             cart.url_ecom_fav="#<@ACT_FAV>";
+            cars._get=#<to.json(get)>;
             '
         }
         

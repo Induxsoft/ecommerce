@@ -36,7 +36,7 @@ module "service"
         ref _POST = from.json(field.dstr(@http_context,"request/post_string","{}"))
     }
 
-    switch @@(_GET,"$tbl")
+    switch @@(_POST,"$table")
     {
         case "modelo"
         {
@@ -45,19 +45,22 @@ module "service"
             {
                 sql=sql + " where ref_car_marca=@marca"
             }
-            
         }
         case "version"
         {
-            // code...
-            break
+            sql="select sys_pk,descripcion from car_version"
+            if @@(_POST,"#modelo") > 0
+            {
+                sql=sql + " where ref_car_modelo=@modelo"
+            }
         }
         default
         {
             do rise_error(500,"No implementado")
         }
     }
-    
+    response<"data*">:dbr.list(@database,ftext(sql),_POST)
+
     do SetResponse(response)
     exception
     {

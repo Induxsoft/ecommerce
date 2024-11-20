@@ -37,6 +37,7 @@ module
 	@UPDATE_CART="/!/update-cart.dkl"
 	@ADD_ADDRES="/!/add-addres.dkl"
 	@ACT_FAV="/!/act-fav.dkl"
+	@CARS_FILTER="/!/filter.dkl"
 
 	//var eco
 	@ecommerce.cart.forma_entega_domicilio= 0

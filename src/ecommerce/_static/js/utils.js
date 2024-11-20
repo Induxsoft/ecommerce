@@ -80,5 +80,10 @@ var utils =
         keys.forEach(key => elem.setAttribute(key, attributes[key]));
         if (innerHTML) elem.innerHTML = innerHTML;
         return elem;
-    }
+    },
+    trigger:function(element,event)
+	{
+		var e=new Event(event);
+       if(element)element.dispatchEvent(e);
+	},
 }

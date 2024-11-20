@@ -1,0 +1,141 @@
+#include "dkli.dkh"
+#!
+module "General search"
+{
+    #include "webcl.dkh"
+    #include "dbr.vars.dkl"
+    #include "prodserv/galeria/controller.dk"
+    #include "prodserv/galeria/model.dk"
+    #include "../_lib/precios.dkl"
+
+    ref _db = get_database()
+    ref get = @@(@http_context,"&request/get")
+    prodsxp = 20    // productos por página
+
+    new p
+    {
+        @"tienda":@ID_TIENDA
+        @"user":@@(@http_context, "session/user/uid")
+    }
+    ref products=dbr.list(_db,"SELECT
+                f.sys_pk pk_fav,
+                u.username,
+                prod.sys_pk,
+                prod.codigo,
+                prod.descripcion,
+                prod.costoultimo,
+                prod.impuestos,
+                IFNULL(prod.precio1, 0) precio1,
+                IFNULL(prod.precio2, 0) precio2,
+                IFNULL(prod.precio3, 0) precio3,
+                IFNULL(prod.precio4, 0) precio4,
+                IFNULL(prod.precio5, 0) precio5,
+                IFNULL(prod.precio106, 0) precio106,
+                IFNULL(prod.precio107, 0) precio107,
+                IFNULL(prod.precio108, 0) precio108,
+                IFNULL(prod.precio109, 0) precio109,
+                IFNULL(prod.precio110, 0) precio110,
+                IFNULL(prod.precio111, 0) precio111,
+                IFNULL(prod.precio112, 0) precio112,
+                IFNULL(prod.precio113, 0) precio113,
+                IFNULL(prod.precio114, 0) precio114,
+                IFNULL(prod.precio115, 0) precio115,
+                IFNULL(prod.precio116, 0) precio116,
+                IFNULL(prod.precio117, 0) precio117,
+                IFNULL(prod.precio118, 0) precio118,
+                IFNULL(prod.precio119, 0) precio119,
+                IFNULL(prod.precio120, 0) precio120,
+                IFNULL(lin.descripcion, '') linea,
+                IFNULL(mar.descripcion, '') marca,
+                IFNULL(dep.descripcion, '') departamento,
+                IFNULL(prod.existencia,0)existencia
+            FROM
+                ecomm_fav f
+                INNER JOIN producto prod ON f.ref_prdo = prod.sys_pk
+                INNER JOIN tuser u ON f.ref_user = u.sys_pk
+                LEFT JOIN linea lin ON prod.ilinea = lin.sys_pk
+                LEFT JOIN marca mar ON prod.imarca = mar.sys_pk
+                LEFT JOIN departamento dep ON prod.idepartamento = dep.sys_pk
+            WHERE
+                IFNULL(prod.sys_info, '') <> 'hidden'
+                AND IFNULL(prod.sys_deleted, 0) = 0
+                AND f.tienda = @tienda
+                AND u.userid = @user 
+                AND IFNULL(prod.existencia,0)>0",p)
+
+
+    ref heads_v12 = url_to_headers(dbr.vars.get(_db, "ecommerce_backoffice_site"))
+    number_price = getNumPrice(_db)
+    exception{@current_error=last_error()}
+    #$ div(class="container-sm p-5 bg-white mt-4")
+    {   
+        div(class="d-flex justify-content-center")
+        {
+            h5{"Mis favoritos"}
+        }
+       #!
+        do ScritGlobal(_db,@null)
+        #$
+        div(class="row")
+        {
+            #! if list.count(products) < 1
+            {
+                #$ div(class="text-center"){ h6(class="text-secondary"){ $"Sin resultados"} }
+            }
+            #! go foreach.lobj(index:i, value:product) with(products)
+            {
+                url_sku = get_url_ecommerce(@url_product, @@(product,'sys_pk'), @@(product,'descripcion'))
+
+                ref img_data = get_img_data(_db, product, heads_v12)
+                product<"url_img">: get_img_from_data(img_data)
+
+                // PRICE
+                new priceparams 
+                {
+                    @"cantidad": 1
+                    @"producto*": product
+                    @"numero": number_price
+                }
+                product<"_price">: getPrice(_db, priceparams)
+
+                action_fav="cart.ActFav(#<@@(product,'#sys_pk')>,'delete',true)"
+                style="color:red"
+
+                #$ div(class="col-lg-4 col-sm-6 mb-4" id="col_fav_#<@@(product,'sys_pk')>")
+                {
+                    div(class="px-3 pb-5 pt-4 text-center h-100 border" style="background-color: #FFF;")
+                    {
+                        div(class="text-end")
+                        {
+                            button(class="btn btn-sm shadow-none" style="#<style>" onclick="#<ftext(action_fav)>" id="prod_fav_#<@@(product,'sys_pk')>"){$"#<@ICON_HEART_24>"}
+                        }
+                        a(href="#<url_sku>" class="text-decoration-none text-dark")
+                        {
+                            img(src="#<@@(product,'$url_img')>" onerror="this.src='/$/img/icons/default_product.png'" loading="lazy" style="height: 9rem; width: 9rem; object-fit: contain;" class="mb-3")
+                            h6(class="m-0"){$"#<@@(product,'$descripcion')>"}
+                            small(class="text-secondary"){$"#<@@(product,'$codigo')>"}
+                            small(class="text-secondary d-flex justify-content-center"){$"Disponible: #<trun(@@(product,'#existencia'))>"}
+                            
+                            div(class="my-3")
+                            {
+                                h6{$"$#<format(@@(product,'#_price'),'#,###.00')>"}
+                            }
+                        }
+                        div
+                        {
+                            button(type="button" class="btn btn-sm px-5 button_forms" onclick="cart.AddCart(#<@@(product,'#sys_pk')>)"){$"Agregar al carrito"}
+                        }
+                    }
+                }
+            }
+            #$
+            script
+            {
+                $'
+                cart.url_ecom_fav="#<@ACT_FAV>";
+                '
+            }
+        }
+        
+    }
+}

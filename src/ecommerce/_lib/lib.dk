@@ -74,7 +74,10 @@ module "lib"
     }
     url_to_headers::url
     {
-        ref headers = record.create()
+        ref headers = ifnull(@@(@http_context,"&request/headers"),record.create())
+        
+        if trim(url)==""{return headers}
+
         base = replace(list.str(split(url,"?"),0), "/","")
         ref parts = split(base,":")
         headers<"HTTPS">: (list.str(parts,0) == "https")
@@ -143,7 +146,7 @@ module "lib"
         mobile_device = contains(tolower(@@(@http_context,"request/headers/HTTP_USER_AGENT")),"mobile")
         ref first_image = list.obj(data, 0)
         ref variations = @@(first_image, "&variations")
-
+        
         _img = @@(first_image, "src")
 
         if not(mobile_device)
@@ -190,7 +193,7 @@ module "lib"
         if @@(config,"#search_bar_mode")== 1
         {
             template_marca="<select class='form-select rounded-0 shadow-none' name='a-mr' id='select-marca'>
-                            <option value='*'>Todas (*)</option>"
+                            <option value='*'>Todas las marcas</option>"
             ref car_marca=dbr.list(db,"select sys_pk,descripcion from car_marca",@null)
             template_marca=template_marca + GenOption(car_marca)
             template_marca=template_marca+ "</select>"

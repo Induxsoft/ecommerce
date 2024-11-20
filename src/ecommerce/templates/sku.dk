@@ -126,7 +126,7 @@ module "Product page"
                     p(class="text-secondary mb-2"){$"Línea: #<@@(product,'linea')>"}
                     p(class="text-secondary mb-2"){$"Marca: #<@@(product,'marca')>"}
                     p(class="text-secondary mb-2"){$"Departamento: #<@@(product,'departamento')>"}
-                    p(class="text-secondary mb-2"){$"Disponible: #<@@(product,'existencia')>"}
+                    p(class="text-secondary mb-2"){$"Disponible: #<trun(@@(product,'existencia'))>"}
                 }
             }
         }
