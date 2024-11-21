@@ -12,9 +12,34 @@ module "General search"
     ref get = @@(@http_context,"&request/get")
     prodsxp = 20    // productos por página
 
+
+    /*Alias para x
+    x=l, línea, líneas o line--->x=linea
+    x=m, marca, tm o trademark--->x=marca
+    x=d, departamento, category--->x=departamento
+    */
+    x=@@(get,"$x")
+    if x!=""
+    {
+        if x=="l" || x=="línea" || x=="líneas" || x=="line" || x=="lineas"{x="linea"}
+        else if x=="m" || x=="marca" || x=="tm" || x=="trademark"{x="marca"}
+        else if x=="d" || x=="category" {x="departamento"}
+    }
     // =============== BÚSQUEDA DE PRODUCTOS
 
     if @@(get,"#p") <= 0 { get<"p">: 1 }
+
+    // if viene x y no vienve v, si viene vc, buscar pk por vc y asignarlo a v
+    if x!="" && not(field.exist(get,"v")) && @@(get,"$vc")!=""
+    {
+        sql=""
+        if x=="linea"{sql="select sys_pk from linea where codigo=@vc limit 1"}
+        else if x=="marca"{sql="select sys_pk from marca where codigo=@vc limit 1"}
+        else if x=="departamento"{sql="select sys_pk from departamento where codigo=@vc limit 1"}
+
+        if trim(sql)!=""{get<"v">:dbr.num(_db,sql,get)}
+    }
+    get<"x">:x
 
     new filters
 	{

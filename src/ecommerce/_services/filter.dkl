@@ -40,19 +40,11 @@ module "service"
     {
         case "modelo"
         {
-            sql="select sys_pk,descripcion from car_modelo"
-            if @@(_POST,"#marca") > 0
-            {
-                sql=sql + " where ref_car_marca=@marca"
-            }
+            sql="select sys_pk,descripcion from car_modelo where ref_car_marca=@marca"
         }
         case "version"
         {
-            sql="select sys_pk,descripcion from car_version"
-            if @@(_POST,"#modelo") > 0
-            {
-                sql=sql + " where ref_car_modelo=@modelo"
-            }
+            sql="select sys_pk,descripcion from car_version where ref_car_modelo=@modelo"
         }
         default
         {
