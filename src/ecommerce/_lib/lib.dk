@@ -74,8 +74,7 @@ module "lib"
     }
     url_to_headers::url
     {
-        ref headers = ifnull(@@(@http_context,"&request/headers"),record.create())
-        
+        ref headers = record.create()
         if trim(url)==""{return headers}
 
         base = replace(list.str(split(url,"?"),0), "/","")
@@ -86,6 +85,7 @@ module "lib"
         {
             headers<"SERVER_PORT">: list.str(parts,2)
         }
+
         return headers
     }
     get_url_ecommerce::url,entity_id,description
