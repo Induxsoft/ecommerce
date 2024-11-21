@@ -1,0 +1,9 @@
+#include "dkli.dkh"
+#!
+module ""
+{
+    @template_page="page.htt"
+    @template_navbar="navbar.htt"
+    @template_footer="footer.htt"
+    @template_sesion="sesion.htt"
+}
