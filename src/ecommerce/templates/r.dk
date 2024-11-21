@@ -165,7 +165,7 @@ module "General search"
         @"tienda":@ID_TIENDA
         @"producto": 0
     }
-    exception{@current_error=last_error()}
+    
     #$ div(class="container-sm p-5 bg-white mt-4")
     {
        #!

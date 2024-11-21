@@ -66,7 +66,7 @@ module "General search"
 
     ref heads_v12 = url_to_headers(dbr.vars.get(_db, "ecommerce_backoffice_site"))
     number_price = getNumPrice(_db)
-    exception{@current_error=last_error()}
+    
     #$ div(class="container-sm p-5 bg-white mt-4")
     {   
         div(class="d-flex justify-content-center")

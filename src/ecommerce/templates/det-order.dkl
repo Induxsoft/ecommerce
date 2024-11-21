@@ -10,7 +10,6 @@ module ""
     
     decimales_importe=parse.num(dbr.vars.getd(db,"FXCA001","6"))
 
-    exception{@current_error=last_error()}
     #$
     div(class="container")
     {

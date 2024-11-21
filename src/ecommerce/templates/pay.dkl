@@ -7,7 +7,7 @@ module ""
     
     if not(isnull(SaveFormPago(db,@url_orders))){return}
 
-    exception{@current_error=last_error()}
+    
     #$
     div(class="container")
     {

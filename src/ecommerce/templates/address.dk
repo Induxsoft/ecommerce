@@ -48,7 +48,7 @@ module "Direcciones de envío"
     }
 
     input_class = "form-control form-control-sm shadow-none"
-    exception{@current_error=last_error()}
+    
     #$ div(class="")
     {
         #!

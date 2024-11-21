@@ -52,4 +52,5 @@ module "Controller configs"
 	do CreateObjectSesion(confg)
 	
 	include search_template(def_tmplt)
+
 }

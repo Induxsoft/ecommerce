@@ -52,7 +52,7 @@ var cars=
                     break;
                     case "version":
                         select=cars.select_version;
-                        text="Todos las versiones";
+                        text="Todas las versiones";
                         selected=cars._get["a-vr"]??"";
                         break;
             }

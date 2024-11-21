@@ -53,7 +53,7 @@ module "Product page"
         @"numero": getNumPrice(_db)
     }
     _price = getPrice(_db, priceparams)
-    exception{@current_error=last_error()}
+    
     
     ids=GetIds()
     action_fav_ids="@"

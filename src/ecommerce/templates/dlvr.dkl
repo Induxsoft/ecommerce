@@ -27,7 +27,7 @@ module ""
     ref forma_entrega=dbr.list(db,"select * from ecomm_cart_fentrega where id in(0,1)",@null)
 
     do SaveFormaEntrega(db,@url_forma_pago)
-    exception{@current_error=last_error()}
+    
     #$
     div(class="container")
     {

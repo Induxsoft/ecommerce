@@ -80,7 +80,7 @@ module "Request password change"
             failure_message = last_error()
         }
     }
-    exception{@current_error=last_error()}
+    
     #$ div
     {
         #!

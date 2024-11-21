@@ -48,6 +48,8 @@ module
 	//default
 	@IMG_PROD_DEFAULT="/$$/img/icons/default_product.png"
 
+	//
+	@TEMPLATE_ERROR="error.dk"
 	//var eco
 	@ecommerce.cart.forma_entega_domicilio= 0
 }
