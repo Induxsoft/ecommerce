@@ -1,0 +1,7 @@
+﻿# Este es un mapa de rutas por extensión
+
+.fso >  $fso/fso.*.dkl
+.folderview > $fileman/viewfolder.dkl
+.meta > $fileman/properties.dkl
+.download > $fileman/download.dkl
+.editcode > $monaco/editor.dkl

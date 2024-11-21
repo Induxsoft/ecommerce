@@ -1,0 +1,284 @@
+#include "dkli.dkh"
+#!
+module ""
+{
+    #include "functions.dkh"
+    #include "serialize.dkh"
+    
+    current_url::include_params
+    {
+        http = ifstr(parse.bool(@@(@http_context,"request/headers/HTTPS")),"https","http")
+        host = @@(@http_context, "request/headers/HTTP_HOST")
+        port = @@(@http_context, "request/headers/SERVER_PORT")
+        ruri = @@(@http_context, "request/headers/REQUEST_URI")
+        prms = @@(@http_context, "request/headers/QUERY_STRING")
+
+        base = http+"://"+host+":"+port
+        _url = path.concat(base, ruri)
+
+        if include_params && trim(prms) != "" { _url = path.concat(_url,"?"+prms)  }
+
+        return _url
+    }
+
+    resource_fileman=".fso,.folderview,.meta,.download,.editcode"
+    if not(contains(@@(@http_context,"$request/headers/http_accept"),"html")) || containsword(current_url(@true),resource_fileman) { return }
+
+    get_site_config::
+    {
+        f = path.concat("_config",@@(@http_context,"$request/headers/HTTP_HOST")+".json")
+        if file.exists(f) 
+        {
+            return from.json(file.rtext(f))
+            exception{}
+        }
+        return record.create()
+    }
+
+    ref confg = get_site_config()
+    
+    @hide_banr = parse.bool(@@(confg,"#hide_main_ad_banner"))
+    @hide_notf = parse.bool(@@(confg,"#hide_notif"))
+    @hide_cart = parse.bool(@@(confg,"#hide_cart"))
+    @hide_prch = parse.bool(@@(confg,"#hide_mypurchases"))
+    @hide_favs = parse.bool(@@(confg,"#hide_myfavs"))
+    @hide_adrs = parse.bool(@@(confg,"#hide_addrs"))
+    @imag_banr = @@(confg,"$banner_add_img")
+    @link_banr = @@(confg,"$banner_add_link")
+    @logo_sURL = field.dstr(confg,"logo","https://plazamundial.net/_img/plazamundial-v2c.png")
+    @logo_link = field.dstr(confg,"logo_link","/")
+    @back_colr = field.dstr(confg,"nav_and_footer_backcolor","#FFF")
+    @text_colr = field.dstr(confg,"nav_and_footer_textcolor","#000")
+    @hide_srch = parse.bool(@@(confg,"#hide_search"))
+    @text_footer=field.dstr(confg,"text_footer","E-Commerce | Powered by Devkron")
+
+    @__getParameterOutputType="_output"
+
+    print_session_button::
+    {
+        li_addres='<li>
+                        <a class="dropdown-item d-flex gap-2 align-items-center" href="/-/address/">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#888" class="bi bi-geo-alt-fill" viewBox="0 0 16 16">
+                                <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10m0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6"/>
+                            </svg>
+                            Mis direcciones de envío
+                        </a>
+                    </li>'
+        if @hide_adrs
+        {
+            li_addres=""
+        }
+        btn = ''
+        if @@(@http_context, "session/user/ids") != ""
+        {
+            btn = ftext('
+                <div class="dropdown dropstart">
+                    <button  class="btn btn-sm bg-transparent dropdown-toggle" id="profile_dropdown" data-bs-toggle="dropdown">
+                        #<@@(@http_context,"session/user/name")>
+                    </button >
+                    <ul class="dropdown-menu" aria-labelledby="profile_dropdown">
+                        <li>
+                            <a class="dropdown-item d-flex gap-2 align-items-center" href="/-/me/">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#888" class="bi bi-person-fill" viewBox="0 0 16 16">
+                                    <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/>
+                                </svg>
+                                Mi perfil
+                            </a>
+                        </li>
+                        #<li_addres>
+                        <div class="p-2 mb-2 border-bottom"></div>
+                        <li>
+                            <a class="dropdown-item d-flex gap-2 align-items-center" href="/-/logout/">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#888" class="bi bi-box-arrow-left" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M6 12.5a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v2a.5.5 0 0 1-1 0v-2A1.5 1.5 0 0 1 6.5 2h8A1.5 1.5 0 0 1 16 3.5v9a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 12.5v-2a.5.5 0 0 1 1 0z"/>
+                                    <path fill-rule="evenodd" d="M.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L1.707 7.5H10.5a.5.5 0 0 1 0 1H1.707l2.147 2.146a.5.5 0 0 1-.708.708z"/>
+                                </svg>
+                                Salir
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <a href="/-/orders/" class="btn btn-sm bg-transparent #<ifstr(@hide_prch,"d-none","")>">Mis compras</button>
+                <a href="/-/favorites/" class="btn btn-sm bg-transparent #<ifstr(@hide_favs,"d-none","")>">Favoritos</a>
+                <button class="btn btn-sm bg-transparent #<ifstr(@hide_notf,"d-none","")>">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bell" viewBox="0 0 16 16">
+                        <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2M8 1.918l-.797.161A4 4 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4 4 0 0 0-3.203-3.92zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 0A5 5 0 0 1 13 6c0 .88.32 4.2 1.22 6"/>
+                    </svg>
+                </button>
+            ')
+        }
+        else 
+        {
+            currenturl = current_url(@true)
+            currenturl = currenturl + ifstr(contains(currenturl,"?"), "&", "?") + "ids=@ids"
+            btn = ftext('<a href="/-/login/?exit_url_encode=#<url_encode(currenturl)>" class="btn btn-sm bg-transparent">Iniciar sesión</a>')
+        }
+        return btn
+    }
+
+    
+    
+    print_navbar::
+    {
+        if @@(@http_context,"request/get/"+@__getParameterOutputType)=="_raw"{return ""}
+        // enviar_a='<div>
+        //                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-geo-alt" viewBox="0 0 16 16">
+        //                                 <path d="M12.166 8.94c-.524 1.062-1.234 2.12-1.96 3.07A32 32 0 0 1 8 14.58a32 32 0 0 1-2.206-2.57c-.726-.95-1.436-2.008-1.96-3.07C3.304 7.867 3 6.862 3 6a5 5 0 0 1 10 0c0 .862-.305 1.867-.834 2.94M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10"/>
+        //                                 <path d="M8 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4m0 1a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/>
+        //                             </svg>
+        //                         </div><div class="text-center">
+        //                             <small>Enviar a</small>
+        //                             <p class="m-0">CP 29039</p>
+        //                         </div>'
+
+        if trim(@imag_banr)==""{@hide_banr=@true}
+
+        template_filter_start=@@(@http_context,"$template_filter_start")
+        template_filter_end=@@(@http_context,"$template_filter_end")
+
+        enviar_a=""
+        template = '
+            <style>
+                // .navbar .btn{ color: inherit !important; }
+            </style>
+            <nav class="navbar border-bottom sticky-top m-0 p-2" style="background-color: #<@back_colr>; color: #<@text_colr>;">
+                <div class="row p-0 m-0 w-100">
+                    
+                    <!-- =============== SECCIÓN 1 [Logo y dirección] =============== -->
+
+                    <div class="col-sm-4">
+                        <div>
+                            <a href="#<@logo_link>">
+                                <img src="#<@logo_sURL>" style="height:40px;width:auto;" class="#<ifstr(trim(@logo_sURL)=="","d-none","")>">
+                            </a>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-center #<ifstr(@hide_adrs,"d-none","")>">
+                            <div class="d-flex">
+                                #<enviar_a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- =============== SECCIÓN 2 [Buscar y menú] =============== -->
+
+                    <div class="col-sm-4">
+                        <form action="/-/r/" method="GET" class="d-flex">
+                            #<template_filter_start>
+                            <input type="search" name="q" value="#<@@(@http_context,"request/get/q")>" class="form-control rounded-0 shadow-none #<ifstr(@hide_srch,"d-none","")>" placeholder="Buscar">
+                            #<template_filter_end>
+                        </form>
+                        <div>
+                            <!-- <h4 class="m-0">Área de menú</h4> -->
+                        </div>
+                    </div>
+
+                    <!-- =============== SECCIÓN 3 [Anuncios y carrito] =============== -->
+
+                    <div class="col-sm-4">
+                        <div class="#<ifstr(@hide_banr,"d-none","")>">
+                            <a href="#<@link_banr>"><img src="#<@imag_banr>" alt="BANNER" style="height:50px;width:auto;"></a>
+                        </div>
+                        <div class="d-flex gap-2 justify-content-end mt-1">
+                            #<print_session_button()>
+                            <a href="/-/krt/" class="btn btn-sm bg-transparent d-flex #<ifstr(@hide_cart,"d-none","")>">
+                                <div style="" id="counter_cart">0</div>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-cart2" viewBox="0 0 16 16">
+                                    <path d="M0 2.5A.5.5 0 0 1 .5 2H2a.5.5 0 0 1 .485.379L2.89 4H14.5a.5.5 0 0 1 .485.621l-1.5 6A.5.5 0 0 1 13 11H4a.5.5 0 0 1-.485-.379L1.61 3H.5a.5.5 0 0 1-.5-.5M3.14 5l1.25 5h8.22l1.25-5zM5 13a1 1 0 1 0 0 2 1 1 0 0 0 0-2m-2 1a2 2 0 1 1 4 0 2 2 0 0 1-4 0m9-1a1 1 0 1 0 0 2 1 1 0 0 0 0-2m-2 1a2 2 0 1 1 4 0 2 2 0 0 1-4 0"/>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        '
+        return ftext(template)
+    }
+    
+    print_footer::
+    {
+        if @@(@http_context,"request/get/"+@__getParameterOutputType)=="_raw"{return ""}
+
+        template = '
+            <footer class="fixed-bottom text-center border-top p-1" style="background-color: #<@back_colr>; color: #<@text_colr>;">
+                #<@text_footer>
+            </footer>
+        '
+        return ftext(template)
+    }
+
+    primary_text_color = @back_colr
+    content_text_color = @text_colr
+    content_back_color = @back_colr
+
+    if tolower(@back_colr) == "#fff" || tolower(@back_colr) == "white"
+    {
+        primary_text_color = "#000"
+        content_text_color = "#FFF"
+        content_back_color = "#000"
+    }
+
+    @main_styles = ftext('
+        <style>
+            :root{
+                --primary-color: #<primary_text_color>;
+                --content-back-color: #<content_back_color>;
+                --content-text-color: #<content_text_color>;
+            }
+            body{ background-color: #F5F5F5; }
+            .title_forms { color: var(--primary-color) !important; }
+            .links_forms { color: var(--primary-color) !important; text-decoration: none; }
+            .button_forms { color: var(--content-text-color) !important; background-color: var(--content-back-color) !important; }
+            .box_shadow { box-shadow: 6px 6px 12px 0 #DDD !important; }
+        </style>
+    ')
+
+    template = '
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <meta charset = "utf-8" />
+                
+                <!-- HTML Meta Tags -->
+                <title>#<@@(@http_context,"$session/resource/properties/web_meta_tags/title")></title>
+                <meta name="description" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/description")>">
+
+                <!-- Facebook Meta Tags -->
+                <meta property="og:url" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/og/url")>">
+                <meta property="og:type" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/og/type")>">
+                <meta property="og:title" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/og/title")>">
+                <meta property="og:description" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/og/description")>">
+                <meta property="og:image" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/og/image")>">
+
+                <!-- Twitter Meta Tags -->
+                <meta name="twitter:card" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/twitter/card")>">
+                <meta property="twitter:domain" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/twitter/domain")>">
+
+                <meta property="twitter:url" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/twitter/url")>">
+                <meta name="twitter:title" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/twitter/title")>">
+                <meta name="twitter:description" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/twitter/description")>">
+                <meta name="twitter:image" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/twitter/image")>">
+                
+                <!-- Bootstrap CSS -->
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous">
+                
+                <!-- Bootstrap & POPPER JS -->
+                <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4" crossorigin="anonymous"></script>
+           
+                #<@@(@http_context,"$session/resource/properties/web_page/end_head")>
+            </head>
+            <body>
+                #<@@(@http_context,"$session/resource/properties/web_page/start_body")>
+                #<@main_styles>
+                #<print_navbar()>
+                #<@content>
+                #<print_footer()>
+                #<@@(@http_context,"$session/resource/properties/web_page/end_body")>
+            </body>
+        </html>
+    '
+    
+    @content = @@(@http_context,"response/text")
+    @http_context<"response/text"> : ftext(template)
+}

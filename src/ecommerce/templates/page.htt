@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta charset = "utf-8" />
+        
+        <!-- HTML Meta Tags -->
+        <title>#<@@(@http_context,"$session/resource/properties/web_meta_tags/title")></title>
+        <meta name="description" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/description")>">
+
+        <!-- Facebook Meta Tags -->
+        <meta property="og:url" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/og/url")>">
+        <meta property="og:type" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/og/type")>">
+        <meta property="og:title" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/og/title")>">
+        <meta property="og:description" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/og/description")>">
+        <meta property="og:image" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/og/image")>">
+
+        <!-- Twitter Meta Tags -->
+        <meta name="twitter:card" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/twitter/card")>">
+        <meta property="twitter:domain" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/twitter/domain")>">
+
+        <meta property="twitter:url" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/twitter/url")>">
+        <meta name="twitter:title" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/twitter/title")>">
+        <meta name="twitter:description" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/twitter/description")>">
+        <meta name="twitter:image" content="#<@@(@http_context,"$session/resource/properties/web_meta_tags/twitter/image")>">
+        
+        <!-- Bootstrap CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous">
+        
+        <!-- Bootstrap & POPPER JS -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4" crossorigin="anonymous"></script>
+    
+        #<@@(@http_context,"$session/resource/properties/web_page/end_head")>
+    </head>
+    <body>
+        #<@@(@http_context,"$session/resource/properties/web_page/start_body")>
+        #<@main_styles>
+        #<print_navbar()>
+        #<@content>
+        #<print_footer()>
+        #<@@(@http_context,"$session/resource/properties/web_page/end_body")>
+    </body>
+</html>

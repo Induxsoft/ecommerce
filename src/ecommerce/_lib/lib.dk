@@ -2,11 +2,36 @@
 #!
 module "lib"
 {
-    #include "functions.dkh"
+    Template_Default::
+    {
+        ref files=split(@PAGES_DEFAULTS,',')
+        _host=@@(@http_context,"$request/headers/HTTP_HOST")
+        dir_web=path.concat("web",_host)
+        for i = 0; i < @count(files)
+        {
+            f=list.str(files,i)
+            file=path.concat(dir_web,f)
 
+            if file.exists(file){return f}
+        }
+        return ""
+    }
     get_site_config::
     {
-        f = path.concat("_config",@@(@http_context,"$request/headers/HTTP_HOST")+".json")
+        _host=@@(@http_context,"$request/headers/HTTP_HOST")
+
+        //buscar configuración en _protected
+        dir_web = path.concat("web",_host)
+        f=path.concat(dir_web,"_protected")
+        f=path.concat(f,_host+".json")
+
+        if not(file.exists(f))
+        {
+            //buscar configuración en host
+            f=path.concat(dir_web,_host+".json")
+        }
+        if not(file.exists(f)){f = path.concat("_config",_host+".json")}
+        
         if file.exists(f) 
         {
             return from.json(file.rtext(f))
@@ -14,6 +39,70 @@ module "lib"
         }
         return record.create()
     }
+    //busca enla rutas prevsitas los archivos .htt
+    search_template_htt::file
+    {
+        ref HEAD = @@(@http_context,"&request/headers/")
+        // Directorios de búsqueda
+		templates_package = "ecommerce/templates/"
+		templates_website = replace("web/{_domain}/_protected/templates/","{_domain}",@@(HEAD,"HTTP_HOST"))
+		templates_wcommon = "_templates/pages/"
+
+        if file.exists(path.concat(templates_website,file)){ template = path.concat(templates_website,file) }
+        else if file.exists(path.concat(templates_wcommon,file)){ template = path.concat(templates_wcommon,file) }
+        else if file.exists(path.concat(templates_package,file)){ template = path.concat(templates_package,file) }
+        else{template=file}
+        
+        return template
+    }
+    //busca enla rutas prevsitas a las plantillas
+    #!
+    search_template::def_tmplt
+	{
+		// Las ubicaciones de búsqueda de plantillas serán en orden:
+		// * /ecommerce/templates/ Plantillas predefinidas del paquete
+		// * web/dominio/_protected/templates/ Plantillas del sitio Web
+		// * _templates/pages/ Plantillas comunes de sitios Web
+
+		// La búsqueda del archivo de plantilla (si no tiene extensión indicada) será: .dkl o .dk (en ese orden)
+		// Adicionalmente, de manera predeterminada, al no existir una plantilla, se cargará /ecommerce/templates/_storefront.dk
+		
+		ref GETD = @@(@http_context,"&request/get/")
+		ref HEAD = @@(@http_context,"&request/headers/")
+		template = path.concat("ecommerce/templates/",def_tmplt)
+
+		// Directorios de búsqueda
+		templates_package = "ecommerce/templates/"
+		templates_website = replace("web/{_domain}/_protected/templates/","{_domain}",@@(HEAD,"HTTP_HOST"))
+		templates_wcommon = "_templates/pages/"
+
+		// Búsqueda
+		file = @@(GETD,"_page_template")
+		fext = file.extension(file)
+
+		if def_tmplt == "" 
+		{ 
+			def_tmplt = "_storefront.dk" 	
+		}
+
+		if fext == ""
+		{
+			if file.exists(path.concat(templates_website,file+".dkl")){ template = path.concat(templates_website,file+".dkl") }
+			else if file.exists(path.concat(templates_website,file+".dk")){ template = path.concat(templates_website,file+".dk") }
+			else if file.exists(path.concat(templates_wcommon,file+".dkl")){ template = path.concat(templates_wcommon,file+".dkl") }
+			else if file.exists(path.concat(templates_wcommon,file+".dk")){ template = path.concat(templates_wcommon,file+".dk") }
+			else if file.exists(path.concat(templates_package,file+".dkl")){ template = path.concat(templates_package,file+".dkl") }
+			else if file.exists(path.concat(templates_package,file+".dk")){ template = path.concat(templates_package,file+".dk") }
+		}
+		else 
+		{
+			if file.exists(path.concat(templates_website,file)){ template = path.concat(templates_website,file) }
+			else if file.exists(path.concat(templates_wcommon,file)){ template = path.concat(templates_wcommon,file) }
+			else if file.exists(path.concat(templates_package,file)){ template = path.concat(templates_package,file) }
+		}
+
+		return template
+	}
     current_url::base_only, include_params
     {
         http = ifstr(parse.bool(@@(@http_context,"request/headers/HTTPS")),"https","http")
@@ -219,6 +308,37 @@ module "lib"
         }
 
         return templates
+    }
+    CreateObjectSesion::&confg
+    {
+        //crear objetos para datos y scripts extras
+        if not(field.exist(@@(@http_context,"&session"),"resource")) { @http_context<"session/resource*">:record.create() }
+        if not(field.exist(@@(@http_context,"&session/resource"),"properties")) { @http_context<"session/resource/properties*">:record.create() }
+        if not(field.exist(@@(@http_context,"&session/resource/properties"),"web_meta_tags")) { @http_context<"session/resource/properties/web_meta_tags*">:record.create() }
+        if not(field.exist(@@(@http_context,"&session/resource/properties/web_meta_tags"),"web_page")){@http_context<"session/resource/properties/web_meta_tags/web_page*">:record.create()}
+        if not(field.exist(@@(@http_context,"&session/resource/properties"),"web_page")){@http_context<"session/resource/properties/web_page*">:record.create()}
+        
+        scripts='
+            <script src="'+@js_crud_model+'"></script>		
+            <script src="'+@js_cart+'"></script>
+            <script src="'+@js_ecommerce_utils+'"></script>
+
+            <link href="'+@css_ecommerce+'" rel="stylesheet">
+        '
+
+        @http_context<"template_filter_start">:GenHTMLMode(confg)
+        @http_context<"template_filter_end">:GenBTn(confg)
+
+        if @@(confg,"#search_bar_mode")== 1
+        {
+            scripts= scripts + '<script src="'+@js_cars+'"></script>
+            <script>
+                    cars.url_filter="'+@CARS_FILTER+'"
+            </script>
+            '
+        }
+        @http_context<"session/resource/properties/web_page/config*">:confg
+        @http_context<"session/resource/properties/web_page/end_head">:scripts
     }
     
 }

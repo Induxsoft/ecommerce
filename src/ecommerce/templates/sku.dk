@@ -89,7 +89,7 @@ module "Product page"
             {
                 div(style="width:80%;height: 80%;")
                 {
-                    img(src="#<@@(product,'$url_img')>" onerror="this.src='/$/img/icons/default_product.png'" class="w-100 h-100" style="object-fit: contain;" )
+                    img(src="#<@@(product,'$url_img')>" onerror="this.src='#<@IMG_PROD_DEFAULT>'" class="w-100 h-100" style="object-fit: contain;" )
                 }
             }
             div(class="col-sm-6 p-4")

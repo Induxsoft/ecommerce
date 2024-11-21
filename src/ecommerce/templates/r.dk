@@ -223,7 +223,7 @@ module "General search"
                         }
                         a(href="#<url_sku>" class="text-decoration-none text-dark")
                         {
-                            img(src="#<@@(product,'$url_img')>" onerror="this.src='/$/img/icons/default_product.png'" loading="lazy" style="height: 9rem; width: 9rem; object-fit: contain;" class="mb-3")
+                            img(src="#<@@(product,'$url_img')>" onerror="this.src='#<@IMG_PROD_DEFAULT>'" loading="lazy" style="height: 9rem; width: 9rem; object-fit: contain;" class="mb-3")
                             h6(class="m-0"){$"#<@@(product,'$descripcion')>"}
                             small(class="text-secondary "){$"#<@@(product,'$codigo')>"}
                             small(class="text-secondary d-flex justify-content-center"){$"Disponible: #<trun(@@(product,'#existencia'))>"}

@@ -25,11 +25,15 @@ module
 	@MAX_ATTEMPS = 10 // Cantidad de veces que se puede solicitar un renvío de correo por sms
 
 	// Recursos estáticos
-	@js_ecommerce_forms = "/$/js/forms.js"
-	@js_ecommerce_utils = "/$/js/utils.js"
-	@js_address = "/$/js/address.js"
-	@js_crud_model = "/$/js/induxsoft.crudl.model.js"
-	@js_cart="/$/js/cart.js"
+	@js_ecommerce_forms = "/$$/js/forms.js"
+	@js_ecommerce_utils = "/$$/js/utils.js"
+	@js_address = "/$$/js/address.js"
+	@js_crud_model = "/$$/js/induxsoft.crudl.model.js"
+	@js_cart="/$$/js/cart.js"
+	@js_cars="/$$/js/cars.js"
+
+	//css
+	@css_ecommerce="/$$/css/ecommerce.css"
 
 	@ID_TIENDA="cande_01" //longitud máxima de 50
 
@@ -38,6 +42,11 @@ module
 	@ADD_ADDRES="/!/add-addres.dkl"
 	@ACT_FAV="/!/act-fav.dkl"
 	@CARS_FILTER="/!/filter.dkl"
+
+	//archivos principales
+	@PAGES_DEFAULTS="index.dkl,index.html,index.htm,readme.md"
+	//default
+	@IMG_PROD_DEFAULT="/$$/img/icons/default_product.png"
 
 	//var eco
 	@ecommerce.cart.forma_entega_domicilio= 0

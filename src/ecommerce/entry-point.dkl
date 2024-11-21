@@ -19,10 +19,6 @@ module "Controller configs"
 	@base_path="ecommerce"
 	@path_root="" // Establezca una ruta de ser necesario
 
-	//No modifique a menos que sepa lo que está haciendo
-	// do crudl.routes.pattern("/_program/")
-	// do crudl.routes.entity("/folder/","entity")
-
 	@dbmvc_path="crudl/"
 	@auto_crud=@true
 	@db_engine="MY_SQL"	
@@ -43,86 +39,17 @@ module "Controller configs"
 	{
 		"access":[{"workspace":"'+@ws+'"}]
 	}'
-
-	if not(field.exist(@@(@http_context,"&session"),"resource")) { @http_context<"session/resource*">:record.create() }
-	if not(field.exist(@@(@http_context,"&session/resource"),"properties")) { @http_context<"session/resource/properties*">:record.create() }
-	if not(field.exist(@@(@http_context,"&session/resource/properties"),"web_meta_tags")) { @http_context<"session/resource/properties/web_meta_tags*">:record.create() }
-	if not(field.exist(@@(@http_context,"&session/resource/properties/web_meta_tags"),"web_page")){@http_context<"session/resource/properties/web_meta_tags/web_page*">:record.create()}
-	if not(field.exist(@@(@http_context,"&session/resource/properties"),"web_page")){@http_context<"session/resource/properties/web_page*">:record.create()}
-	// <script type="text/javascript" src="/$/sigesac/js/bootbox.js"></script>
-	scripts='
-		<script src="/$/js/induxsoft.crudl.model.js"></script>		
-		<script src="/$/js/cart.js"></script>
-		<script src="/$/js/utils.js"></script>
-
-		<link href="/$/css/ecommerce.css" rel="stylesheet">
-	'
+	
 	//obtener la configuración del archivo {host}.json
     ref confg = get_site_config()
+	if @@(confg,"$logo_prod_default")!=""{@IMG_PROD_DEFAULT=@@(confg,"$logo_prod_default")}
+
 	def_tmplt = @@(confg,"$default_page_template")
 
 	@http_context<"cconsumo_price">: @@(confg,"$cconsumo_price")
 	//obtiene el carrito abierto del usuario que inicio sesión
 	do GetCartOpenByUser()
+	do CreateObjectSesion(confg)
 	
-	@http_context<"template_filter_start">:GenHTMLMode(confg)
-	@http_context<"template_filter_end">:GenBTn(confg)
-
-	if @@(confg,"#search_bar_mode")== 1
-	{
-		scripts= scripts + '<script src="/$/js/cars.js"></script>
-		<script>
-				cars.url_filter="'+@CARS_FILTER+'"
-		</script>
-		'
-	}
-	
-	@http_context<"session/resource/properties/web_page/end_head">:scripts
-	search_template::def_tmplt
-	{
-		if def_tmplt == "" { def_tmplt = "_storefront.dk" }
-
-		// Las ubicaciones de búsqueda de plantillas serán en orden:
-		// * /ecommerce/templates/ Plantillas predefinidas del paquete
-		// * web/dominio/_protected/templates/ Plantillas del sitio Web
-		// * _templates/pages/ Plantillas comunes de sitios Web
-
-		// La búsqueda del archivo de plantilla (si no tiene extensión indicada) será: .dkl o .dk (en ese orden)
-		// Adicionalmente, de manera predeterminada, al no existir una plantilla, se cargará /ecommerce/templates/_storefront.dk
-		
-		ref GETD = @@(@http_context,"&request/get/")
-		ref HEAD = @@(@http_context,"&request/headers/")
-		template = path.concat("ecommerce/templates/",def_tmplt)
-
-		// Directorios de búsqueda
-		templates_package = "ecommerce/templates/"
-		templates_website = replace("web/{_domain}/_protected/templates/","{_domain}",@@(HEAD,"HTTP_HOST"))
-		templates_wcommon = "_templates/pages/"
-
-		// Búsqueda
-		file = @@(GETD,"_page_template")
-		fext = file.extension(file)
-
-		if fext == ""
-		{
-			if file.exists(path.concat(templates_website,file+".dkl")){ template = path.concat(templates_website,file+".dkl") }
-			else if file.exists(path.concat(templates_website,file+".dk")){ template = path.concat(templates_website,file+".dk") }
-			else if file.exists(path.concat(templates_wcommon,file+".dkl")){ template = path.concat(templates_wcommon,file+".dkl") }
-			else if file.exists(path.concat(templates_wcommon,file+".dk")){ template = path.concat(templates_wcommon,file+".dk") }
-			else if file.exists(path.concat(templates_package,file+".dkl")){ template = path.concat(templates_package,file+".dkl") }
-			else if file.exists(path.concat(templates_package,file+".dk")){ template = path.concat(templates_package,file+".dk") }
-		}
-		else 
-		{
-			if file.exists(path.concat(templates_website,file)){ template = path.concat(templates_website,file) }
-			else if file.exists(path.concat(templates_wcommon,file)){ template = path.concat(templates_wcommon,file) }
-			else if file.exists(path.concat(templates_package,file)){ template = path.concat(templates_package,file) }
-		}
-
-		return template
-	}
-
 	include search_template(def_tmplt)
-	// #include "crudl/controller.dkl"
-	
 }

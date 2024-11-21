@@ -1,0 +1,9 @@
+*: /-/{_page_template}/{_main_arg}/{_sec_arg?} > $ecommerce/entry-point.dkl
+*: /-/{_page_template}/{_main_arg?} > $ecommerce/entry-point.dkl
+*: /-/ > $ecommerce/entry-point.dkl
+*: /!/{_service} > $ecommerce/_services/{_service}
+*: / > $ecommerce/entry-point.dkl
+
+*: /$/{_pack}/{_level1}/{_level2}/{_resource} > ${_pack}/_static/{_level1}/{_level2}/{_resource}
+*: /$/{_pack}/{_level1}/{_resource} > ${_pack}/_static/{_level1}/{_resource}
+*: /$/{_pack}/{_resource} > ${_pack}/_static/{_resource}

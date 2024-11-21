@@ -1,0 +1,50 @@
+
+<nav class="navbar border-bottom sticky-top m-0 p-2" style="background-color: #<@back_colr>; color: #<@text_colr>;">
+    <div class="row p-0 m-0 w-100">
+        
+        <!-- =============== SECCIÓN 1 [Logo y dirección] =============== -->
+
+        <div class="col-sm-4">
+            <div>
+                <a href="#<@logo_link>">
+                    <img src="#<@logo_sURL>" style="height:40px;width:auto;" class="#<ifstr(trim(@logo_sURL)=="","d-none","")>">
+                </a>
+            </div>
+            <div class="d-flex align-items-center justify-content-center #<ifstr(@hide_adrs,"d-none","")>">
+                <div class="d-flex">
+                    #<enviar_a>
+                </div>
+            </div>
+        </div>
+
+        <!-- =============== SECCIÓN 2 [Buscar y menú] =============== -->
+
+        <div class="col-sm-4">
+            <form action="/-/r/" method="GET" class="d-flex">
+                #<template_filter_start>
+                <input type="search" name="q" value="#<@@(@http_context,"request/get/q")>" class="form-control rounded-0 shadow-none #<ifstr(@hide_srch,"d-none","")>" placeholder="Buscar">
+                #<template_filter_end>
+            </form>
+            <div>
+                <!-- <h4 class="m-0">Área de menú</h4> -->
+            </div>
+        </div>
+
+        <!-- =============== SECCIÓN 3 [Anuncios y carrito] =============== -->
+
+        <div class="col-sm-4">
+            <div class="#<ifstr(@hide_banr,"d-none","")>">
+                <a href="#<@link_banr>"><img src="#<@imag_banr>" alt="BANNER" style="height:50px;width:auto;"></a>
+            </div>
+            <div class="d-flex gap-2 justify-content-end mt-1">
+                #<print_session_button()>
+                <a href="/-/krt/" class="btn btn-sm bg-transparent d-flex #<ifstr(@hide_cart,"d-none","")>">
+                    <div style="" id="counter_cart">0</div>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-cart2" viewBox="0 0 16 16">
+                        <path d="M0 2.5A.5.5 0 0 1 .5 2H2a.5.5 0 0 1 .485.379L2.89 4H14.5a.5.5 0 0 1 .485.621l-1.5 6A.5.5 0 0 1 13 11H4a.5.5 0 0 1-.485-.379L1.61 3H.5a.5.5 0 0 1-.5-.5M3.14 5l1.25 5h8.22l1.25-5zM5 13a1 1 0 1 0 0 2 1 1 0 0 0 0-2m-2 1a2 2 0 1 1 4 0 2 2 0 0 1-4 0m9-1a1 1 0 1 0 0 2 1 1 0 0 0 0-2m-2 1a2 2 0 1 1 4 0 2 2 0 0 1-4 0"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>

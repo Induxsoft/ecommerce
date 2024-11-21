@@ -4,7 +4,6 @@ module "Me (profile info)"
 {
     error_message = ""
     ref db = get_database()
-    ref confg=get_site_config()
 
     new prm { @"uid": @@(@http_context, "$session/user/uid") }
     sql_user = "

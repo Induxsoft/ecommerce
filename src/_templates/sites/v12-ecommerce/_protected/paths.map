@@ -1,0 +1,2 @@
+*: /$/monaco/* > $monaco/_static/*
+GET:/$$/* > $ecommerce/_static/*
