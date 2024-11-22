@@ -40,6 +40,10 @@ module "General search"
         if trim(sql)!=""{get<"v">:dbr.num(_db,sql,get)}
     }
     get<"x">:x
+    ///filtar marcas,modelos y versiones por codigo
+    if trim(@@(get,"$mrc"))!="" && trim(@@(get,"$a-mr"))==""{get<"a-mr">:dbr.num(_db,"select sys_pk from car_marca where codigo=@mrc",get)}
+    if trim(@@(get,"$mdc"))!="" && trim(@@(get,"$a-md"))==""{get<"a-md">:dbr.num(_db,"select sys_pk from car_modelo where codigo=@mdc",get)}
+    if trim(@@(get,"$vrc"))!="" && trim(@@(get,"$a-vr"))==""{get<"a-vr">:dbr.num(_db,"select sys_pk from car_version where codigo=@vrc",get)}
 
     new filters
 	{
@@ -103,15 +107,16 @@ module "General search"
     @JOIN_CARS=""
     @CONDITIONAL_CARS=""
 
-    if trim(@@(filters,"$a_mr"))!=""
+    if trim(replace(@@(filters,"$a_mr"),"*","")) !=""
     {
         @JOIN_CARS="INNER JOIN car_compatible crc ON prod.sys_pk=crc.ref_producto
                     INNER JOIN car_modelo crm ON crc.ref_modelo=crm.sys_pk
+                    INNER JOIN car_marca cm ON crm.ref_car_marca=cm.sys_pk
                     INNER JOIN car_version crv ON crc.ref_version=crv.sys_pk"
 
-        @CONDITIONAL_CARS="AND if(ifnull(@a_mr,'*')='*',true,crm.ref_car_marca=@a_mr)
-                        AND if(ifnull(@a_md,'*')='*',true,crm.sys_pk=@a_md)
-                        AND if(ifnull(@a_vr,'*')='*',true,crv.sys_pk=@a_vr)
+        @CONDITIONAL_CARS="AND if(ifnull(@a_mr,'*')='*' OR ifnull(@a_mr,'')='',true,cm.sys_pk=@a_mr)
+                        AND if(ifnull(@a_md,'*')='*' OR ifnull(@a_md,'')='',true,crm.sys_pk=@a_md)
+                        AND if(ifnull(@a_vr,'*')='*' OR ifnull(@a_vr,'')='',true,crv.sys_pk=@a_vr)
                         "
     }
 
