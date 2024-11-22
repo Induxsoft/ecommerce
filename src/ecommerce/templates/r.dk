@@ -99,6 +99,7 @@ module "General search"
         ORDER BY #<order>
         LIMIT #<limit>;
     "
+    
     @JOIN_CARS=""
     @CONDITIONAL_CARS=""
 

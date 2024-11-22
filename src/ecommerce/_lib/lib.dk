@@ -340,5 +340,29 @@ module "lib"
         @http_context<"session/resource/properties/web_page/config*">:confg
         @http_context<"session/resource/properties/web_page/end_head">:scripts
     }
-    
+    ShowErrorView::
+    {
+        error_code=last_error_code()
+		error=last_error()
+		
+		@http_context<"response/headers/content-type">:"text/html;charset=utf-8"
+    	@http_context<"response/output">:"text"
+
+		file_error=search_template_htt(@TEMPLATE_ERROR)
+		if file.exists(file_error)
+		{
+			@http_context<"error*">:record.create()
+			using @http_context
+			{
+				@"error/code":error_code
+				@"error/message":error
+			}
+			@http_context<"response/text">: runscript(file_error,"error_context",@http_context)
+		}
+		else 
+		{
+			@http_context<"response/text">:error
+			@http_context<"response/error_code">:error_code
+		}
+    }
 }

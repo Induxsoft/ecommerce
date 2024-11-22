@@ -53,4 +53,8 @@ module "Controller configs"
 	
 	include search_template(def_tmplt)
 
+	exception
+	{
+		do ShowErrorView()
+	}
 }

@@ -2,6 +2,12 @@
 #!
 module "error.dk"
 {
+	#include "functions.dkh"
+
+	ref config=@@(@error_context,"&session/resource/properties/web_page/config")
+	background=ifstr(tolower(@@(config,"$nav_and_footer_backcolor"))!="#fff",@@(config,"$nav_and_footer_backcolor"),"#4154f1")
+	text_color=ifstr(@@(config,"$nav_and_footer_textcolor")!=background,@@(config,"$nav_and_footer_textcolor"),"#fff")
+
 	#$
 	main
 	{
@@ -13,18 +19,6 @@ module "error.dk"
 
 		body {
 			font-family: "Open Sans", sans-serif;
-			/* background: #f6f9ff; */
-			/* color: #444444; */
-		}
-
-		a {
-			color: #4154f1;
-			text-decoration: none;
-		}
-
-		a:hover {
-			color: #717ff5;
-			text-decoration: none;
 		}
 
 		h1,h2,h3,h4,h5,h6 {
@@ -38,7 +32,7 @@ module "error.dk"
 		.error h1 {
 			font-size: 180px;
 			font-weight: 700;
-			color: #4154f1;
+			color: #<background>;
 			margin-bottom: 0;
 			line-height: 150px;
 		}
@@ -46,21 +40,23 @@ module "error.dk"
 		.error h2 {
 			font-size: 24px;
 			font-weight: 700;
-			color: #012970;
+			color: #<text_color>;
 			margin-bottom: 30px;
 		}
 
-		.error .alert {
+		.error .alert 
+		{
 			max-width: -webkit-fill-available;
 		}
-
-		.error .btn {
-			background: #51678f;
-			color: #fff;
+		.error .btn 
+		{
+			background: #<background>;
+			color: #<text_color>;
 			padding: 8px 30px;
 		}
 
-		.error .btn:hover {
+		.error .btn:hover 
+		{
 			background: #3e4f6f;
 		}
 
@@ -73,11 +69,11 @@ module "error.dk"
 
 		div(class="container")
 		{
-			section(class="section error min-vh-100 d-flex flex-column align-items-center justify-content-center")
+			section(class="section error d-flex flex-column align-items-center justify-content-center")
 			{
 				#!
-				code = last_error_code()
-				error = last_error()
+				code = @@(@error_context,"#error/code")
+				error =@@(@error_context,"$error/message")
 				switch code
 				{
 					case 404
@@ -109,10 +105,9 @@ module "error.dk"
 				div(class="alert alert-primary overflow-auto" role="alert"){$"#<error>"}
 				div(class="d-flex gap-2 justify-content-center")
 				{
-					button(type="button" onclick="window.history.back();" class="btn"){$"Volver"}
-					button(type="button" onclick="window.location.reload();" class="btn"){$"Recargar"}
+					button(type="button" onclick="window.history.back();" class="btn rounded-0"){$"Volver"}
+					button(type="button" onclick="window.location.reload();" class="btn rounded-0"){$"Recargar"}
 				}
-				// img(src="/$/webshell/img/not-found.svg" class="img-fluid py-5" alt="Not Found")
 			}
 		}
 	}
