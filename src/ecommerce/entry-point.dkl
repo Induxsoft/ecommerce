@@ -51,6 +51,24 @@ module "Controller configs"
 	do GetCartOpenByUser()
 	do CreateObjectSesion(confg)
 	
+	if def_tmplt==""
+	{
+		template_tmp=Template_Default()
+		if template_tmp!=""
+		{
+			ext=file.extension(template_tmp)
+			if ext==".dkl"
+			{
+				include template_tmp
+			}
+			else 
+			{
+				do ResponseHTML(file.rtext(template_tmp))
+			}
+			return
+		}	
+	}
+
 	include search_template(def_tmplt)
 
 	exception

@@ -4,15 +4,20 @@ module "lib"
 {
     Template_Default::
     {
+        ref get=@@(@http_context,"&request/get")
+        if @@(get,"$_page_template")!="" || @@(get,"$_main_arg")!=""{return ""}
+
         ref files=split(@PAGES_DEFAULTS,',')
+
         _host=@@(@http_context,"$request/headers/HTTP_HOST")
         dir_web=path.concat("web",_host)
+
         for i = 0; i < @count(files)
         {
             f=list.str(files,i)
             file=path.concat(dir_web,f)
 
-            if file.exists(file){return f}
+            if file.exists(file){return file}
         }
         return ""
     }
@@ -59,6 +64,10 @@ module "lib"
     #!
     search_template::def_tmplt
 	{
+        if def_tmplt == "" 
+		{ 
+			def_tmplt = "_storefront.dk" 	
+		}
 		// Las ubicaciones de búsqueda de plantillas serán en orden:
 		// * /ecommerce/templates/ Plantillas predefinidas del paquete
 		// * web/dominio/_protected/templates/ Plantillas del sitio Web
@@ -79,11 +88,6 @@ module "lib"
 		// Búsqueda
 		file = @@(GETD,"_page_template")
 		fext = file.extension(file)
-
-		if def_tmplt == "" 
-		{ 
-			def_tmplt = "_storefront.dk" 	
-		}
 
 		if fext == ""
 		{
@@ -364,5 +368,11 @@ module "lib"
 			@http_context<"response/text">:error
 			@http_context<"response/error_code">:error_code
 		}
+    }
+    ResponseHTML::html
+    {
+        @http_context<"response/headers/content-type">:"text/html;charset=utf-8"
+    	@http_context<"response/output">:"text"
+        @http_context<"response/text">:html
     }
 }

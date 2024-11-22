@@ -28,7 +28,7 @@ module "Lines"
                         {
                             div
                             {
-                                img(src="" onerror="this.src='/$/img/icons/default_product.png'" loading="lazy" style="height: 9rem; width: 9rem; object-fit: contain;" class="mb-3"){$""}
+                                img(src="" onerror="this.src='#<@IMG_PROD_DEFAULT>'" loading="lazy" style="height: 9rem; width: 9rem; object-fit: contain;" class="mb-3"){$""}
                             }
                             div
                             {

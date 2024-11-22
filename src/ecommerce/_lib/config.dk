@@ -44,7 +44,8 @@ module
 	@CARS_FILTER="/!/filter.dkl"
 
 	//archivos principales
-	@PAGES_DEFAULTS="index.dkl,index.html,index.htm,readme.md"
+	@PAGES_DEFAULTS="index.dkl,index.html,index.htm"
+	
 	//default
 	@IMG_PROD_DEFAULT="/$$/img/icons/default_product.png"
 
