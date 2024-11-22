@@ -260,6 +260,19 @@ module "lib"
         }
         return _img
     }
+    get_img_line::&db,codigo,file
+    {
+        new info_domain 
+        {
+            @"get*": @@(@http_context,"&request/get")
+            @"headers*": url_to_headers(dbr.vars.get(db, "ecommerce_backoffice_site"))
+        }
+        ref @cross_domain=info_domain
+        prodserv_path_img_lns_url=dbr.vars.get(db,"prodserv_path_img_lns_url")
+        attachment_path=dbr.vars.get(db,"prodserv_path_img_lns")
+
+        return GetDataFile(codigo,attachment_path,prodserv_path_img_lns_url,file)
+    }
     GenOption::&l
     {
         template=""

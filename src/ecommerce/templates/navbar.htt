@@ -1,5 +1,5 @@
 
-<nav class="navbar border-bottom sticky-top m-0 p-2" style="background-color: #<@back_colr>; color: #<@text_colr>;">
+<nav class="navbar border-bottom sticky-top m-0 p-2" style="background-color: #<@back_colr>; color: #<@text_colr>;" id="navbar_main">
     <div class="row p-0 m-0 w-100">
         
         <!-- =============== SECCIÓN 1 [Logo y dirección] =============== -->

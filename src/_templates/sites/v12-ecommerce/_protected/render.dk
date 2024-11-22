@@ -143,6 +143,19 @@ module ""
             .links_forms { color: var(--primary-color) !important; text-decoration: none; }
             .button_forms { color: var(--content-text-color) !important; background-color: var(--content-back-color) !important; }
             .box_shadow { box-shadow: 6px 6px 12px 0 #DDD !important; }
+            #navbar_main button,
+            #navbar_main a
+            {
+                color: #<@text_colr> !important;
+            }
+            #navbar_main ul{background-color: #<@back_colr>  !important;}
+            #navbar_main ul li a{background:#<@back_colr> !important;}
+            #navbar_main ul li a:hover
+            {
+                background:lightgray !important;
+                color:black !important;
+            }
+            #counter_cart{color:black !important;}
         </style>
     ')
 

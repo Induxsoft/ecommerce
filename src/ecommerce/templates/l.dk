@@ -2,8 +2,10 @@
 #!
 module "Lines"
 {
+    #include "prodserv/_lib/lib.dk"
+
     ref db = get_database()
-    ref lines = dbr.list(db, "SELECT sys_pk, codigo, descripcion FROM linea ORDER BY descripcion;", @null)
+    ref lines = dbr.list(db, "SELECT sys_pk, codigo, descripcion,img_file FROM linea ORDER BY descripcion;", @null)
 
     
     #$ div(class="container-sm p-5 bg-white mt-4")
@@ -20,6 +22,8 @@ module "Lines"
             $""
             #! go foreach.lobj(index:i, value:line) with(lines)
             {
+                ref dtline=get_img_line(db,@@(line,"$codigo"),@@(line,"$img_file"))
+
                 #$ div(class="col-lg-4 col-sm-6 mb-4")
                 {
                     div(class="px-3 pb-5 pt-4 text-center h-100" style="background-color: #f5f5f5;")
@@ -28,7 +32,7 @@ module "Lines"
                         {
                             div
                             {
-                                img(src="" onerror="this.src='#<@IMG_PROD_DEFAULT>'" loading="lazy" style="height: 9rem; width: 9rem; object-fit: contain;" class="mb-3"){$""}
+                                img(src="#<ifstr(@@(dtline,'$url')!='',@@(dtline,'$url'),'')>" onerror="this.src='#<@IMG_PROD_DEFAULT>'" loading="lazy" style="height: 9rem; width: 9rem; object-fit: contain;" class="mb-3"){$""}
                             }
                             div
                             {
