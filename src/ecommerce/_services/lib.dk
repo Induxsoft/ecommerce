@@ -66,13 +66,12 @@ module ""
     }
     SaveFormPago::&db,url_redir
     {
-        @ecommerce.cart.cliente =dbr.vars.get(db,"v12.ventas.cliente")
-
         _METHOD = @@(@http_context,"request/headers/REQUEST_METHOD")
-        ref _GET = ifnull(@@(@http_context,"&request/get"),record.create())
-        ref _POST = ifnull(@@(@http_context,"&request/post"),record.create())
 
         if _METHOD != "POST" { return @null}
+
+        ref _GET = ifnull(@@(@http_context,"&request/get"),record.create())
+        ref _POST = ifnull(@@(@http_context,"&request/post"),record.create())
 
         id_carrito=GetIdCarrito()
         if id_carrito==""{do rise_error(500,"No hay un carrito abierto")}
@@ -174,5 +173,22 @@ module ""
             }
             exception{}
         }
+    }
+
+    SetVarEcommerce::&confg
+    {
+        if trim(@@(confg,"$def_cliente"))!=""{@ecommerce.cart.cliente=@@(confg,"$def_cliente")}
+        else 
+        {
+            ref db=get_database()
+            if not(isnull(db))
+            {
+                cliente=dbr.vars.get(db,"v12.ventas.cliente")
+                if trim(cliente)!=""{@ecommerce.cart.cliente =cliente}
+            }
+        }
+        if trim(@@(confg,"$def_serie"))!=""{@ecommerce.cart.serie=@@(confg,"$def_serie")}
+        if trim(@@(confg,"$def_divisa"))!=""{@ecommerce.cart.divisa=@@(confg,"$def_divisa")}
+        if trim(@@(confg,"$def_cconsumo"))!=""{@ecommerce.cart.cconsumo=@@(confg,"$def_cconsumo")}
     }
 }

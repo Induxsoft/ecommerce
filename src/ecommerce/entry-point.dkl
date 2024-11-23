@@ -50,9 +50,11 @@ module "Controller configs"
 	//obtiene el carrito abierto del usuario que inicio sesión
 	do GetCartOpenByUser()
 	do CreateObjectSesion(confg)
+	do SetVarEcommerce(confg)
 	
 	if def_tmplt==""
 	{
+		//buscar las plantillas default por si lo hubiese
 		template_tmp=Template_Default()
 		if template_tmp!=""
 		{

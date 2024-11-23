@@ -3,13 +3,17 @@
 module ":ecommerce.cart"
 {
     @ecommerce.cart.field_precio="precio1"
-    @ecommerce.cart.forma_pago_online= 1
+    //var forma de pago del carrito
     @ecommerce.cart.forma_pago_pendiente= 0
+    @ecommerce.cart.forma_pago_online= 1
+    @ecommerce.cart.forma_pago_ala_entrega= 2
+    @ecommerce.cart.forma_pago_credito_cliente= 3
+
     @ecommerce.cart.status_cerrado= 1
     @ecommerce.cart.field_descuento="descuento1"
     @ecommerce.cart.decimalesEnImportes = 6
     @ecommerce.cart.cliente ="(PG)"
-    @ecommerce.cart.venta_fpago = 1 //contado
+    @ecommerce.cart.venta_fpago = 0 //no aplica
     @ecommerce.cart.cconsumo = "0001" 
     @ecommerce.cart.divisa = "MXN"
     @ecommerce.cart.documento = 2 //pedido // var para venta y query para obtener la pk del block documento
@@ -535,7 +539,15 @@ module ":ecommerce.cart"
                 notas=notas + "Forma de pago: "+@@(cart,'$f_pago')+"\r\n"
                 notas=notas + ifstr(@@(cart,'#fpago')==@ecommerce.cart.forma_pago_online,'ID DEL PAGO: '+ @@(cart,'$id_pago'),'')+"\r\n"
                 notas=notas + "Forma de entrega: "+@@(cart,'$fentrega')
-                        
+                
+                //asignación la forma de pago de la venta
+                switch @@(cart,'#fpago')
+                {
+                    case @ecommerce.cart.forma_pago_online{@ecommerce.cart.venta_fpago= 2}
+                    case @ecommerce.cart.forma_pago_ala_entrega{@ecommerce.cart.venta_fpago= 1}
+                    case @ecommerce.cart.forma_pago_credito_cliente{@ecommerce.cart.venta_fpago= 2}
+                }
+
                 if @@(cart,"#entrega")== @ecommerce.cart.a_domicilio
                 {
                     p<"addres">:@@(cart,"#enviara")
