@@ -13,6 +13,7 @@ module
 	@url_product = "/-/sku/"
 	@url_forma_entrega="/-/dlvr/"
 	@url_forma_pago="/-/pay/"
+	@url_payment="/-/payment/"
 	@url_orders="/-/orders/"
 	@url_det_order="/-/det-order/@orden/"
 
@@ -35,7 +36,7 @@ module
 	//css
 	@css_ecommerce="/$$/css/ecommerce.css"
 
-	@ID_TIENDA="cande_01" //longitud máxima de 50
+	@ID_TIENDA="_Mi_Tienda_Online_" //longitud máxima de 50
 
 	//url servicios
 	@UPDATE_CART="/!/update-cart.dkl"
@@ -52,5 +53,6 @@ module
 	//
 	@TEMPLATE_ERROR="error.dk"
 	//var eco
-	@ecommerce.cart.forma_entega_domicilio= 0
+	@ecommerce.cart.forma_entrega_domicilio= 0
+	@ecommerce.cart.forma_entrega_sin_entrega= 99
 }

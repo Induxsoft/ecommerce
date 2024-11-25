@@ -59,6 +59,13 @@ module ""
                 url=@url_forma_entrega
                 if @ids==""{url=UrlLogin()}
                 else if @count(detalle) < 1{url=@url_search}
+                else 
+                {
+                    if not(parse.bool(field.dstr(confg,"deliver",@true))) && not(parse.bool(field.dstr(confg,"pickup",@true)))
+                    {
+                        url=@url_forma_pago
+                    }
+                }
 
                 #$
                 div(class="d-flex justify-content-end")

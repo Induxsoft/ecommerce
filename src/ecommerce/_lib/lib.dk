@@ -388,4 +388,31 @@ module "lib"
     	@http_context<"response/output">:"text"
         @http_context<"response/text">:html
     }
+    ScritGlobal::&db,&data_cart
+    {
+        if isnull(data_cart)
+        {
+            id_carrito=GetIdCarrito()
+            if id_carrito!=""
+            {
+                ref data_cart=ecommerce.cart.get(db,id_carrito)
+            }
+        }
+
+        if isset("@current_error")
+        {
+            #$
+            div(class="alert alert-danger"){$'#<@current_error>'}
+        }
+        #$
+        script
+        {
+            $'
+                if(!cart)cart={};
+                cart.url_update_cart="#<@UPDATE_CART>";
+                cart.articulos=#<@@(data_cart,"#totales/piezas")>;
+            '
+        }
+        #!
+    }
 }

@@ -34,6 +34,10 @@ module ""
         id_carrito=GetIdCarrito()
         if id_carrito==""{do rise_error(500,"No hay un carrito abierto")}
 
+        if not(field.exist(_POST,"fentrega"))
+        {
+            _POST<"fentrega">: @ecommerce.cart.forma_entrega_sin_entrega
+        }
         new params
         {
             @"id_carrito":id_carrito
@@ -41,7 +45,7 @@ module ""
         }
         if @@(_POST,"#direccion_existente") > 0{params<"direccion_existente">:@@(_POST,"#direccion_existente")}
 
-        if @@(_POST,"#fentrega")== @ecommerce.cart.forma_entega_domicilio && @@(_POST,"#direccion_existente") < 1
+        if @@(_POST,"#fentrega")== @ecommerce.cart.forma_entrega_domicilio && @@(_POST,"#direccion_existente") < 1
         {
             new nueva_direccion
             {
@@ -57,12 +61,17 @@ module ""
             }
             params<"nueva_direccion*">:nueva_direccion
         }
+        
         ref res=ecommerce.cart.deliveron(db,params)
         if trim(url_redir)!=""
         {
-            @http_context<"response/headers/Location">:url_redir
+            do redirec(url_redir)
         }
         return res
+    }
+    redirec::url
+    {
+        @http_context<"response/headers/Location">:url
     }
     SaveFormPago::&db,url_redir
     {
@@ -72,6 +81,17 @@ module ""
 
         ref _GET = ifnull(@@(@http_context,"&request/get"),record.create())
         ref _POST = ifnull(@@(@http_context,"&request/post"),record.create())
+
+        if @@(_POST,"#fpago")== @ecommerce.cart.forma_pago_online
+        {
+            do redirec(@url_payment)
+            return
+        }
+        if @@(_POST,"#fpago")==@ecommerce.cart.forma_pago_credito_cliente
+        {
+            if @@(_POST,"#fpago_cliente")< 1{do rise_error(500,"Debe indicar un cliente")}
+            @ecommerce.cart.cliente=str(@@(_POST,"#fpago_cliente"))
+        }
 
         id_carrito=GetIdCarrito()
         if id_carrito==""{do rise_error(500,"No hay un carrito abierto")}
@@ -94,33 +114,7 @@ module ""
         }
         return res
     }
-    ScritGlobal::&db,&data_cart
-    {
-        if isnull(data_cart)
-        {
-            id_carrito=GetIdCarrito()
-            if id_carrito!=""
-            {
-                ref data_cart=ecommerce.cart.get(db,id_carrito)
-            }
-        }
-
-        if isset("@current_error")
-        {
-            #$
-            div(class="alert alert-danger"){$'#<@current_error>'}
-        }
-        #$
-        script
-        {
-            $'
-                if(!cart)cart={};
-                cart.url_update_cart="#<@UPDATE_CART>";
-                cart.articulos=#<@@(data_cart,"#totales/piezas")>;
-            '
-        }
-        #!
-    }
+    
     #!
     GetRecordList::&l,key,value
     {
@@ -136,6 +130,19 @@ module ""
     {
         new params{@"ids":GetIds()}
         return dbr.rec(db,"select u.sys_pk,u.userId, u.userName from tuser u inner join sys_session s on u.sys_pk=s.iuser where s.sys_guid=@ids;",params)
+    }
+    GetClientByUser::&db
+    {
+        ref user=GetCurrentUser(db)
+        new p
+        {
+            @"user":@@(user,"#sys_pk")
+        }
+
+        return dbr.list(db,"SELECT c.sys_pk,c.codigo,c.nombre FROM usrcli u
+        INNER JOIN cliente c ON u.cliente=c.sys_pk
+        INNER JOIN tuser t ON u.usuario=t.sys_pk
+        WHERE t.sys_pk=@user",p)
     }
     #!
     ProdFav::&db,&p
@@ -190,5 +197,6 @@ module ""
         if trim(@@(confg,"$def_serie"))!=""{@ecommerce.cart.serie=@@(confg,"$def_serie")}
         if trim(@@(confg,"$def_divisa"))!=""{@ecommerce.cart.divisa=@@(confg,"$def_divisa")}
         if trim(@@(confg,"$def_cconsumo"))!=""{@ecommerce.cart.cconsumo=@@(confg,"$def_cconsumo")}
+        if trim(@@(confg,"$id_tienda"))!=""{@ID_TIENDA=@@(confg,"$id_tienda")}
     }
 }

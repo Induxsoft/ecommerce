@@ -37,7 +37,8 @@ var cart=
         this.mod_addres_user=document.getElementById("mod_addres_user")
         this.mod_next=document.getElementById("mod_next");
         this.mod_domicilio=document.getElementById("mod-domicilio");
-       
+        this.mod_cliente_credit=document.getElementById("mod_cliente_credit");
+        this.select_cliente=document.getElementById("select_cliente");
         
         if(this.articulos > 0)this.SetValue(this.counter_cart,this.articulos);
 
@@ -62,6 +63,21 @@ var cart=
         {
             this.add_addres.type="button";
             this.add_addres.setAttribute("onclick","cart.addAdres()");
+        }
+    },
+    SelectFormaPago(value,e,fpago_cliente)
+    {
+        if(!this.mod_cliente_credit)return;
+
+        if(Number(value)==Number(fpago_cliente))
+        {
+            this.mod_cliente_credit.classList.remove("d-none");
+            if(this.select_cliente)this.select_cliente.setAttribute("required",true);
+        }
+        else
+        {
+            this.mod_cliente_credit.classList.add("d-none");
+            if(this.select_cliente)this.select_cliente.removeAttribute("required");
         }
     },
     SelectMetEntregaDom()

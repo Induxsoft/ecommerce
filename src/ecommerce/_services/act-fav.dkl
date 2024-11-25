@@ -10,6 +10,7 @@ module "service"
     #include "ecommerce/_lib/lib.dk"
     #include "ecommerce/_lib/config.dk"
     #include "website.dkl"
+    #include "dbr.vars.dkl"
 
     @http_context<"response/headers/Access-Control-Allow-Origin">:"*"
     @http_context<"response/headers/Access-Control-Allow-Headers">:"*"
@@ -35,6 +36,10 @@ module "service"
     {
         ref _POST = from.json(field.dstr(@http_context,"request/post_string","{}"))
     }
+
+    ref config=get_site_config()
+    do SetVarEcommerce(config)
+
     using _GET{@"uid":@@(@http_context, "session/user/uid")}
     user=dbr.num(@database,"select sys_pk from tuser where userid=@uid",_GET)
     _GET<"user">:user

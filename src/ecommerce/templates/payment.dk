@@ -1,0 +1,14 @@
+#include "dkli.dkh"
+#!
+module ""
+{
+    ref db=get_database()
+    #$
+    div(class="container")
+    {
+        #!
+        do ScritGlobal(db,@null)
+        #$
+        h1{"pago online"}
+    }
+}

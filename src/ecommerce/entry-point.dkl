@@ -48,9 +48,9 @@ module "Controller configs"
 
 	@http_context<"cconsumo_price">: @@(confg,"$cconsumo_price")
 	//obtiene el carrito abierto del usuario que inicio sesión
+	do SetVarEcommerce(confg)
 	do GetCartOpenByUser()
 	do CreateObjectSesion(confg)
-	do SetVarEcommerce(confg)
 	
 	if def_tmplt==""
 	{

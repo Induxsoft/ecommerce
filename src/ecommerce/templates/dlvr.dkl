@@ -62,12 +62,24 @@ module ""
                         for i = 0; i < @count(forma_entrega)
                         {
                             ref fentrega=@item(forma_entrega,i)
-                            #$
-                            label(class="d-flex")
+
+                            show_fentrega=@false
+                            switch @@(fentrega,"#id")
                             {
-                                input(type="radio" required="true" onchange="cart.radioChange(event);" class="induxsoft-form-control me-2" id="fentrega" name="fentrega" value="#<@@(fentrega,'#id')>")
-                                $" #<@@(fentrega,'$const')>"
+                                case 0{show_fentrega= parse.bool(field.dstr(confg,"deliver",@true))}
+                                case 1{show_fentrega= parse.bool(field.dstr(confg,"pickup",@true))}
                             }
+                            
+                            if show_fentrega
+                            {
+                                #$
+                                label(class="d-flex")
+                                {
+                                    input(type="radio" required="true" onchange="cart.radioChange(event);" class="induxsoft-form-control me-2" id="fentrega" name="fentrega" value="#<@@(fentrega,'#id')>")
+                                    $" #<@@(fentrega,'$const')>"
+                                }
+                            }
+                            
                         }
                         input(type="hidden" class="induxsoft-form-control" id="direccion_existente" name="direccion_existente" value="")
                     }

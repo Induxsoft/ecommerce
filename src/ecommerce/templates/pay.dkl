@@ -5,9 +5,9 @@ module ""
     ref db=get_database()
     ref forma_pago=dbr.list(db,"select * from ecomm_cart_fpago where id in(1,2,3)",@null)
     
+    ref clientes=GetClientByUser(db)
     if not(isnull(SaveFormPago(db,@url_orders))){return}
 
-    
     #$
     div(class="container")
     {
@@ -34,17 +34,43 @@ module ""
                 }
                 div(class="card-body")
                 {
-                    div(id="f-entrega")
+                    div(id="f-pago")
                     {
                         #!
                         for i = 0; i < @count(forma_pago)
                         {
                             ref fpago=@item(forma_pago,i)
-                            #$
-                            label(class="d-flex")
+
+                            show_fpago=@false
+                            switch @@(fpago,"#id")
                             {
-                                input(type="radio" class="induxsoft-form-control me-2" id="fpago" name="fpago" value="#<@@(fpago,'#id')>")
-                                $"#<@@(fpago,'$const')>"
+                                case @ecommerce.cart.forma_pago_ala_entrega{show_fpago=parse.bool(field.dstr(confg,"pay_onreceipt",@true))}
+                                case @ecommerce.cart.forma_pago_credito_cliente{show_fpago=parse.bool(field.dstr(confg,"pay_oncredit",@true))}
+                                case @ecommerce.cart.forma_pago_online{show_fpago=parse.bool(field.dstr(confg,"pay_online",@true))}
+                            }
+                            if show_fpago
+                            {
+                                #$
+                                label(class="d-flex")
+                                {
+                                    input(type="radio" required="true" onclick="cart.SelectFormaPago(#<@@(fpago,'#id')>,event,#<@ecommerce.cart.forma_pago_credito_cliente>)" class="induxsoft-form-control me-2" id="fpago" name="fpago" value="#<@@(fpago,'#id')>")
+                                    $"#<@@(fpago,'$const')>"
+                                }
+                            }
+                        }
+                        #$
+                        div(id="mod_cliente_credit" class="d-none")
+                        {
+                            hr{""}
+                            label{"Cliente:"}
+                            select(class="form-select" id="select_cliente" name="fpago_cliente")
+                            {$""
+                                #!
+                                for i = 0; i < @count(clientes)
+                                {
+                                    ref cliente=@item(clientes,i)
+                                    #$ option(value="#<@@(cliente,'#sys_pk')>"){"#<@@(cliente,'$nombre')>"}
+                                }
                             }
                         }
                     }
