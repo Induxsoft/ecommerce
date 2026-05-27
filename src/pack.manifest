@@ -1,0 +1,6 @@
+{
+	"id":"ecommerce",
+	"installable":["ecommerce"],
+	"version":"1.0.41",
+	"schema_ver":"1.0.10"
+}
