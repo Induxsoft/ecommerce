@@ -230,7 +230,7 @@ module "lib"
         }
         @cross_domain = info_domain
         do set_paths()
-        return magick.get(db, _get)
+        return gallery.magick.get(db, _get)
     }
     get_img_from_data::&data
     {
