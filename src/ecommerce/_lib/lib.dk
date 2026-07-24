@@ -21,10 +21,29 @@ module "lib"
         }
         return ""
     }
+    get_config_db::
+    {
+        ref db=get_database()
+        _host=@@(@http_context,"$request/headers/HTTP_HOST")
+        str_config=dbr.str(db,"select config from host_site_config where type=2 and host='"+_host+"'",@null)
+        if trim(str_config) == ""{return record.create()}
+        
+        ref json= from.json(str_config)
+        return json
+        exception
+        {
+            do pop_exception()
+        }
+
+        return record.create()
+    }
     get_site_config::
     {
         _host=@@(@http_context,"$request/headers/HTTP_HOST")
 
+        ref _cfg=get_config_db()
+        if @count(list.create_from_fields(_cfg)) > 0{return _cfg}
+        
         //buscar configuración en _protected
         dir_web = path.concat("web",_host)
         f=path.concat(dir_web,"_protected")

@@ -11,7 +11,9 @@ program "instalador"
     ref @files_to_import = from.json('[
     "ecomm_cart_status.csv",
     "ecomm_cart_fpago.csv",
-    "ecomm_cart_fentrega.csv"
+    "ecomm_cart_fentrega.csv",
+    "host_site_type.csv",
+    "host_site_config.csv"
     ]')
 
     // Lista de privilegios iniciales (arreglo de id de privilegios)
