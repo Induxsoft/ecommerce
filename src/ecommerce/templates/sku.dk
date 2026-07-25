@@ -2,6 +2,7 @@
 #!
 module "Product page"
 {
+    #include "magick.dkh"
     #include "dbr.vars.dkl"
     #include "prodserv/galeria/controller.dk"
     #include "prodserv/galeria/model.dk"

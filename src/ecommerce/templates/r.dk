@@ -2,6 +2,7 @@
 #!
 module "General search"
 {
+    #include "magick.dkh"
     #include "webcl.dkh"
     #include "dbr.vars.dkl"
     #include "prodserv/galeria/controller.dk"
@@ -180,7 +181,7 @@ module "General search"
 
         div(class="mb-4 d-flex flex-wrap")
         {
-            h3(class="m-0 flex-grow-1"){$"Productos"}
+            h3(class="m-0 flex-grow-1"){$""}
             form(action="." method="GET" id="form1")
             {
                 input(type="hidden" name="x" value="#<@@(get,'x')>")

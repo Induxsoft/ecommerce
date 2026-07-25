@@ -15,7 +15,7 @@ module "Lines"
         #$
         div(class="mb-4")
         {
-            h3{$"Líneas"}
+            h3{$""}
         }
         div(class="row")
         {

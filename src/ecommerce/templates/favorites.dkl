@@ -2,6 +2,7 @@
 #!
 module "General search"
 {
+    #include "magick.dkh"
     #include "webcl.dkh"
     #include "dbr.vars.dkl"
     #include "prodserv/galeria/controller.dk"
