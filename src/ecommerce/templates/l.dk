@@ -5,7 +5,9 @@ module "Lines"
     #include "prodserv/_lib/lib.dk"
 
     ref db = get_database()
-    ref lines = dbr.list(db, "SELECT sys_pk, codigo, descripcion,img_file FROM linea ORDER BY descripcion;", @null)
+    ref lines = dbr.list(db, "SELECT sys_pk, codigo, descripcion,img_file FROM linea
+    WHERE IFNULL(sys_info, '') <> 'hidden'
+     ORDER BY descripcion;", @null)
 
     
     #$ div(class="container-sm p-5 bg-white mt-4")
