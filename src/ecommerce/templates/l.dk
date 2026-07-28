@@ -7,6 +7,7 @@ module "Lines"
     ref db = get_database()
     ref lines = dbr.list(db, "SELECT sys_pk, codigo, descripcion,img_file FROM linea
     WHERE IFNULL(sys_info, '') <> 'hidden'
+    AND clase IN(1,2,3,4,5,6)
      ORDER BY descripcion;", @null)
 
     
