@@ -33,7 +33,7 @@ module "General search"
         }
         default
         {
-            @conditional="AND IFNULL(prod.existencia,0)>0"
+            @conditional="AND if(prod.itipo=2,IFNULL(prod.existencia,0)>0,true)"
             break
         }
     }
@@ -104,7 +104,8 @@ module "General search"
             IFNULL(prod.precio113,0) precio113, IFNULL(prod.precio114,0) precio114, IFNULL(prod.precio115,0) precio115, IFNULL(prod.precio116,0) precio116,
             IFNULL(prod.precio117,0) precio117, IFNULL(prod.precio118,0) precio118, IFNULL(prod.precio119,0) precio119, IFNULL(prod.precio120,0) precio120,
             IFNULL(lin.descripcion,'') linea, IFNULL(mar.descripcion,'') marca, IFNULL(dep.descripcion,'') departamento,
-            IFNULL(prod.existencia,0)existencia
+            IFNULL(prod.existencia,0)existencia,
+            prod.itipo
         FROM producto prod
             LEFT JOIN linea lin ON prod.ilinea = lin.sys_pk
             LEFT JOIN marca mar ON prod.imarca = mar.sys_pk
@@ -258,7 +259,7 @@ module "General search"
                             h6(class="m-0"){$"#<@@(product,'$descripcion')>"}
                             small(class="text-secondary "){$"#<@@(product,'$codigo')>"}
                             #!
-                            if @@(product,'#existencia') < 1
+                            if @@(product,'#existencia') < 1 && @@(product,"#itipo") == @ecommerce.tipo.producto_inve
                             {
                                 if @productOutOfStock == "showOutOfStock"
                                 {
@@ -268,7 +269,7 @@ module "General search"
                                     #!
                                 }
                             }
-                            else
+                            else if @@(product,"#itipo") == @ecommerce.tipo.producto_inve
                             {
                                 #$
                                 small(class="text-secondary d-flex justify-content-center"){$"Disponible: #<trun(@@(product,'#existencia'))>"}
@@ -281,7 +282,7 @@ module "General search"
                             }
                         }
                         #!
-                        show=(@@(product,'#existencia') < 1 && @productOutOfStock == "allowPurchase") || @@(product,'#existencia')  > 0
+                        show=(@@(product,'#existencia') < 1 && @productOutOfStock == "allowPurchase") || @@(product,'#existencia')  > 0 || @@(product,"#itipo") == @ecommerce.tipo.producto_noinve
 
                         if show
                         {

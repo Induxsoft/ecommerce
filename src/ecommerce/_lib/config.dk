@@ -55,4 +55,7 @@ module
 	//var eco
 	@ecommerce.cart.forma_entrega_domicilio= 0
 	@ecommerce.cart.forma_entrega_sin_entrega= 99
+	//tipo producto
+	@ecommerce.tipo.producto_inve= 2
+	@ecommerce.tipo.producto_noinve= 1
 }
